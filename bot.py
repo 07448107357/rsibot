@@ -28,10 +28,8 @@ def calculate_rsi_series(series, period=14):
 def get_real_rsi(ticker_symbol):
     try:
         data = yf.download(tickers=ticker_symbol, period="1d", interval="1m", progress=False)
-        if len(data) < 20:
+        if len(data) < 15:
             return None
-        
-
         
         close_prices = data['Close']
         if isinstance(close_prices, pd.DataFrame):
@@ -52,44 +50,46 @@ def send_welcome(message):
     welcome_text = (
         "🤖 **Welcome to Real-Time RSI Signals Bot**\n\n"
         "✅ Connected to Live Market Data\n"
-        "⚡ Accurate RSI calculation active..."
+        "⚡ Broad Signal Thresholds Active (BUY <= 40 | SELL >= 60)\n"
+        "Scanning markets every 45 seconds..."
     )
     bot.reply_to(message, welcome_text, parse_mode='Markdown')
 
 def check_and_send_signals():
     while True:
-        time.sleep(60)
+        time.sleep(45)
         for pair_display, pair_ticker in PAIRS.items():
             rsi_val = get_real_rsi(pair_ticker)
             
             if rsi_val is None:
                 continue
                 
-            
             for cid in list(user_chats):
-                if rsi_val <= 30:
+                
+                if rsi_val <= 40:
                     msg = (
                         f"🟢 **REAL BUY SIGNAL (CALL / UP)**\n\n"
                         f"📊 **Pair:** {pair_display}\n"
-                        f"📈 **RSI (1M):** {rsi_val:.1f} (Oversold)\n"
+                        f"📈 **RSI (1M):** {rsi_val:.1f} (Bullish Zone)\n"
                         f"⏱ **Duration:** 1 Minute\n"
                         f"🌐 **Data:** Real-Time Market"
                     )
                     bot.send_message(cid, msg, parse_mode='Markdown')
-                elif rsi_val >= 70:
+                elif rsi_val >= 60:
                     msg = (
                         f"🔴 **REAL SELL SIGNAL (PUT / DOWN)**\n\n"
                         f"📊 **Pair:** {pair_display}\n"
-                        f"📉 **RSI (1M):** {rsi_val:.1f} (Overbought)\n"
+                        f"📉 **RSI (1M):** {rsi_val:.1f} (Bearish Zone)\n"
                         f"⏱ **Duration:** 1 Minute\n"
                         f"🌐 **Data:** Real-Time Market"
                     )
                     bot.send_message(cid, msg, parse_mode='Markdown')
 
 if __name__ == '__main__':
-    print("Bot starting with accurate RSI formula...")
+    print("Bot starting with active signals loop...")
     threading.Thread(target=check_and_send_signals, daemon=True).start()
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    
     
     
     
