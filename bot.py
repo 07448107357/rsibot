@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 
-bot = telebot.TeleBot('8920172447:AAFrn1H4vsSJj6FEK30lYbWp75mZ91sbTVM')
+bot = telebot.TeleBot('8920172447:AAH9Hn6-mqax4De75b1X90ePpXmtTFdFwLI')
 
 
 def calculate_rsi(prices, period=14):
