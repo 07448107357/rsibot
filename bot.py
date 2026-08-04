@@ -5,6 +5,8 @@ import pandas as pd
 import numpy as np
 
 
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+bot = telebot.TeleBot(BOT_TOKEN)
 bot = telebot.TeleBot('8920172447:AAH9Hn6-mqax4De75b1X90ePpXmtTFdFwLI')
 
 
