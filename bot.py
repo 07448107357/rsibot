@@ -6,7 +6,7 @@ import numpy as np
 
 
 
-8920172447:AAFls2T5B3IlAJrVfERcl1PNzREGUbg3TMs
+TOKEN = '8920172447:AAFls2T5B3I1AJrVfERcl1PNzREGUbg3TMs'
 
 def calculate_rsi(prices, period=14):
     if len(prices) < period + 1:
