@@ -1,14 +1,12 @@
-bot.py
-8920172447:AAFls2T5B3IlAJrVfERcl1PNzREGUbg3TMs
 import os
 import time
 import telebot
 import pandas as pd
 import numpy as np
 
-# Replace 'YOUR_BOT_TOKEN_HERE' with your actual Telegram bot token from BotFather
-TOKEN = os.environ.get('BOT_TOKEN', 'YOUR_BOT_TOKEN_HERE')
-bot = telebot.TeleBot(TOKEN)
+
+
+bot = telebot.TeleBot('8920172447:AAFls2T5B3I1AJrVfERcl1PNzREGUbg3TMs')
 
 def calculate_rsi(prices, period=14):
     if len(prices) < period + 1:
