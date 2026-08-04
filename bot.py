@@ -1,93 +1,89 @@
 import os
 import time
-import random
 import threading
 import telebot
 import numpy as np
+import yfinance as yf
 
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
 
-
 user_chats = set()
 
-def calculate_rsi(prices, period=14):
-    if len(prices) < period + 1:
-        return 50
-    deltas = np.diff(prices)
-    seed = deltas[:period+1]
-    up = seed[seed >= 0].sum() / period
-    down = -seed[seed < 0].sum() / period
-    if down == 0:
-        return 100
-    rs = up / down
-    rsi = np.zeros_like(prices)
-    rsi[:period] = 100. - 100. / (1. + rs)
-    for i in range(period, len(prices)):
-        delta = deltas[i - 1]
-        upval = delta if delta > 0 else 0.
-        downval = -delta if delta < 0 else 0.
-        up = (up * (period - 1) + upval) / period
-        down = (down * (period - 1) + downval) / period
+
+PAIRS = {
+    "EUR/USD": "EURUSD=X",
+    "GBP/USD": "GBPUSD=X",
+    "AUD/USD": "AUDUSD=X",
+    "USD/JPY": "USDJPY=X"
+}
+
+def get_real_rsi(ticker_symbol):
+    try:
+        
+        data = yf.download(tickers=ticker_symbol, period="1d", interval="1m", progress=False)
+        if len(data) < 15:
+            return None
+        
+        close_prices = data['Close'].values
+        deltas = np.diff(close_prices)
+        
+        seed = deltas[:14]
+        up = seed[seed >= 0].sum() / 14
+        down = -seed[seed < 0].sum() / 14
+        
         if down == 0:
-            rsi[i] = 100
-        else:
-            rs = up / down
-            rsi[i] = 100. - 100. / (1. + rs)
-    return rsi[-1]
+            return 100
+            
+        rs = up / down
+        rsi = 100. - 100. / (1. + rs)
+        return float(rsi)
+    except Exception as e:
+        print(f"Error fetching data for {ticker_symbol}: {e}")
+        return None
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     user_chats.add(message.chat.id)
     welcome_text = (
-        "🤖 **Welcome to RSI OTC Signals Bot**\n\n"
-        "✅ Connected to Pocket Option Feed!\n"
-        "⚡ Analysis in progress. Signals will arrive every 30 seconds."
+        "🤖 **Welcome to Real-Time RSI Signals Bot**\n\n"
+        "✅ Connected to Live Market Data (Yahoo Finance)\n"
+        "⚡ Scanning pairs for real RSI oversold (<30) & overbought (>70) conditions..."
     )
     bot.reply_to(message, welcome_text, parse_mode='Markdown')
-    
-    send_test_signal(message.chat.id)
 
-def send_test_signal(chat_id):
-    msg = (
-        f"🟢 **BUY SIGNAL (CALL / UP)**\n\n"
-        f"📊 **Pair:** EUR/USD (OTC)\n"
-        f"📈 **RSI Indicator:** 28.5 (Oversold)\n"
-        f"⏱ **Duration:** 1 Minute\n"
-        f"🎯 **Platform:** Pocket Option"
-    )
-    bot.send_message(chat_id, msg, parse_mode='Markdown')
-
-def auto_signals_loop():
-    pairs = ["EUR/USD (OTC)", "GBP/USD (OTC)", "AUD/USD (OTC)", "EUR/JPY (OTC)"]
+def check_and_send_signals():
     while True:
-        time.sleep(30)
-        if user_chats:
+        time.sleep(60) 
+        for pair_display, pair_ticker in PAIRS.items():
+            rsi_val = get_real_rsi(pair_ticker)
+            
+            if rsi_val is None:
+                continue
+                
+            
             for cid in list(user_chats):
-                pair = random.choice(pairs)
-                rsi_val = random.uniform(20, 80)
-                if rsi_val <= 35:
+                if rsi_val <= 30:
                     msg = (
-                        f"🟢 **BUY SIGNAL (CALL / UP)**\n\n"
-                        f"📊 **Pair:** {pair}\n"
-                        f"📈 **RSI Indicator:** {rsi_val:.1f} (Oversold)\n"
+                        f"🟢 **REAL BUY SIGNAL (CALL / UP)**\n\n"
+                        f"📊 **Pair:** {pair_display}\n"
+                        f"📈 **RSI (1M):** {rsi_val:.1f} (Oversold)\n"
                         f"⏱ **Duration:** 1 Minute\n"
-                        f"🎯 **Platform:** Pocket Option"
+                        f"🌐 **Data:** Real-Time Market"
                     )
                     bot.send_message(cid, msg, parse_mode='Markdown')
-                elif rsi_val >= 65:
+                elif rsi_val >= 70:
                     msg = (
-                        f"🔴 **SELL SIGNAL (PUT / DOWN)**\n\n"
-                        f"📊 **Pair:** {pair}\n"
-                        f"📉 **RSI Indicator:** {rsi_val:.1f} (Overbought)\n"
+                        f"🔴 **REAL SELL SIGNAL (PUT / DOWN)**\n\n"
+                        f"📊 **Pair:** {pair_display}\n"
+                        f"📉 **RSI (1M):** {rsi_val:.1f} (Overbought)\n"
                         f"⏱ **Duration:** 1 Minute\n"
-                        f"🎯 **Platform:** Pocket Option"
+                        f"🌐 **Data:** Real-Time Market"
                     )
                     bot.send_message(cid, msg, parse_mode='Markdown')
 
 if __name__ == '__main__':
-    print("Bot starting...")
-    threading.Thread(target=auto_signals_loop, daemon=True).start()
+    print("Bot with real market data started...")
+    threading.Thread(target=check_and_send_signals, daemon=True).start()
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
-    
     
