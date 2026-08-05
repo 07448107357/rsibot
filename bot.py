@@ -1,4 +1,5 @@
 import os
+import time
 import telebot
 from telebot import types
 import pandas as pd
@@ -98,10 +99,16 @@ def handle_pair_selection(call):
     bot.send_message(call.message.chat.id, msg, reply_markup=build_pairs_keyboard(), parse_mode='Markdown')
 
 if __name__ == '__main__':
-    print("Starting bot safely...")
-    # إزالة أي جلسة معلقة تمنع الاتصال وتسبب خطأ 409
-    bot.remove_webhook()
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    print("Clearing old sessions...")
+    time.sleep(3)
+    try:
+        bot.remove_webhook()
+    except Exception as e:
+        print(f"Webhook cleanup note: {e}")
+        
+    print("Starting bot polling safely...")
+    bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
+    
     
     
     
