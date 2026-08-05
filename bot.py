@@ -30,7 +30,6 @@ def analyze_market(ticker_symbol):
         if isinstance(close_prices, pd.DataFrame):
             close_prices = close_prices.iloc[:, 0]
             
-        # 1. حساب RSI
         delta = close_prices.diff()
         gain = delta.clip(lower=0).rolling(window=14).mean()
         loss = (-delta.clip(upper=0)).rolling(window=14).mean()
@@ -44,7 +43,6 @@ def analyze_market(ticker_symbol):
         rs = last_gain / (last_loss if last_loss != 0 else 1)
         rsi = 100.0 - (100.0 / (1.0 + rs))
         
-        # 2. تحديد الاتجاه
         ema_20 = close_prices.ewm(span=20, adjust=False).mean().iloc[-1]
         last_price = close_prices.iloc[-1]
         
@@ -78,7 +76,6 @@ def handle_pair_selection(call):
     if rsi_val is None:
         msg = f"⚠️ **{pair_display}**\nبيانات السوق غير متوفرة حالياً."
     else:
-        # تحديد الإشارة بشكل مباشر دون حالات انتظار تعجيزية
         if rsi_val <= 50:
             if rsi_val <= 35:
                 signal_type = "🟢 **STRONG BUY SIGNAL (CALL / UP)**\n🎯 **السبب:** تشبع بيعي قوي (Oversold)"
@@ -101,7 +98,11 @@ def handle_pair_selection(call):
     bot.send_message(call.message.chat.id, msg, reply_markup=build_pairs_keyboard(), parse_mode='Markdown')
 
 if __name__ == '__main__':
+    print("Starting bot safely...")
+    # إزالة أي جلسة معلقة تمنع الاتصال وتسبب خطأ 409
+    bot.remove_webhook()
     bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    
     
     
     
