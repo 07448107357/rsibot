@@ -3,11 +3,12 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import yfinance as yf
 import pandas as pd
-import ta
 
+# 1. إعداد التوكن والربط مع تليجرام
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
 
+# 2. قائمة أزواج العملات والذهب
 PAIR_MAP = {
     "EUR/USD": "EURUSD=X",
     "GBP/USD": "GBPUSD=X",
@@ -21,56 +22,72 @@ PAIR_MAP = {
     "Gold (XAU/USD)": "GC=F"
 }
 
+# 3. دالة حساب RSI يدوياً
+def calculate_rsi(data, window=14):
+    delta = data.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+# 4. دالة التحليل الفني الموسعة (فريم 5 دقائق)
 def analyze_forex_pair(symbol):
     try:
-        # جلب البيانات لآخر يوم بفريم 5 دقائق
-        data = yf.download(tickers=symbol, period="1d", interval="5m")
-        if data.empty:
-            return "❌ تعذر جلب بيانات السوق حالياً."
+        # جلب بيانات فريم 5 دقائق لآخر 5 أيام لضمان دقة الحسابات
+        df = yf.download(tickers=symbol, period="5d", interval="5m")
+        if df.empty or len(df) < 35:
+            return "❌ تعذر جلب بيانات كافية للسوق حالياً."
 
-        df = data.copy()
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # 1. المتوسطات المتحركة للاتجاه (EMA)
-        df['EMA_Fast'] = ta.trend.ema_indicator(df['Close'], window=9)
-        df['EMA_Slow'] = ta.trend.ema_indicator(df['Close'], window=21)
-        
-        # 2. مؤشر القوة النسبية (RSI)
-        df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
-        
-        # 3. مؤشر MACD
-        macd = ta.trend.MACD(df['Close'])
-        df['MACD'] = macd.macd()
-        df['MACD_Signal'] = macd.macd_signal()
-        
-        # 4. بولنجر باندز (Bollinger Bands)
-        bb = ta.volatility.BollingerBands(df['Close'], window=20, window_dev=2)
-        df['BB_High'] = bb.bollinger_hband()
-        df['BB_Low'] = bb.bollinger_lband()
+        close_prices = df['Close']
 
+        # حساب المتوسطات المتحركة EMA
+        df['EMA_Fast'] = close_prices.ewm(span=9, adjust=False).mean()
+        df['EMA_Slow'] = close_prices.ewm(span=21, adjust=False).mean()
+
+        # حساب مؤشر RSI
+        df['RSI'] = calculate_rsi(close_prices, window=14)
+
+        # حساب MACD
+        ema12 = close_prices.ewm(span=12, adjust=False).mean()
+        ema26 = close_prices.ewm(span=26, adjust=False).mean()
+        df['MACD'] = ema12 - ema26
+        df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+        # حساب بولنجر باندز Bollinger Bands
+        df['SMA20'] = close_prices.rolling(window=20).mean()
+        df['STD20'] = close_prices.rolling(window=20).std()
+        df['BB_High'] = df['SMA20'] + (df['STD20'] * 2)
+        df['BB_Low'] = df['SMA20'] - (df['STD20'] * 2)
+
+        # قراءة الشمعة الأخيرة
         latest = df.iloc[-1]
         price = round(float(latest['Close']), 5)
         rsi_val = round(float(latest['RSI']), 2)
 
-        # حساب النقاط لتحديد قوة الإشارة
+        # تقييم الإشارات والشروط
         buy_score = 0
         sell_score = 0
 
-        # فحص الشروط
+        # شرط EMA
         if latest['EMA_Fast'] > latest['EMA_Slow']: buy_score += 1
         else: sell_score += 1
 
+        # شرط RSI
         if 50 < latest['RSI'] < 70: buy_score += 1
         elif 30 < latest['RSI'] < 50: sell_score += 1
 
+        # شرط MACD
         if latest['MACD'] > latest['MACD_Signal']: buy_score += 1
         else: sell_score += 1
 
+        # شرط Bollinger Bands
         if latest['Close'] <= latest['BB_Low']: buy_score += 1
         elif latest['Close'] >= latest['BB_High']: sell_score += 1
 
-        # صياغة النتيجة حسب قوة النقاط
+        # صياغة النتيجة بناءً على قوة الشروط
         if buy_score >= 3:
             trend = "صاعد قوي ⬆️"
             signal = f"🟢 **BUY SIGNAL (CALL / UP)**\n🎯 نسبة التوافق: {buy_score * 25}%"
@@ -83,6 +100,7 @@ def analyze_forex_pair(symbol):
 
         return (
             f"📊 **تحليل الزوج:** {symbol}\n"
+            f"⏱️ **الفريم:** 5 دقائق (5m)\n"
             f"💵 **السعر الحالي:** {price}\n"
             f"📈 **الاتجاه:** {trend}\n"
             f"📉 **RSI (14):** {rsi_val}\n"
@@ -92,6 +110,7 @@ def analyze_forex_pair(symbol):
     except Exception as e:
         return f"حدث خطأ أثناء التحليل: {e}"
 
+# 5. بناء واجهة الأزرار التفاعلية
 def get_main_keyboard():
     markup = InlineKeyboardMarkup(row_width=3)
     buttons = [InlineKeyboardButton(pair, callback_data=pair) for pair in PAIR_MAP.keys() if pair != "Gold (XAU/USD)"]
@@ -99,15 +118,17 @@ def get_main_keyboard():
     markup.add(InlineKeyboardButton("Gold (XAU/USD)", callback_data="Gold (XAU/USD)"))
     return markup
 
+# 6. معالجة أمر البداية /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.send_message(
         message.chat.id, 
-        "🤖 **مرحباً بك في بوت الإشارات الفنية**\nاختر الزوج الذي تريد تحليله من القائمة أدناه:", 
+        "🤖 **مرحباً بك في بوت الإشارات الفنية (فريم 5m)**\nاختر الزوج الذي تريد تحليله من القائمة أدناه:", 
         parse_mode="Markdown",
         reply_markup=get_main_keyboard()
     )
 
+# 7. معالجة الضغط على الأزرار
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
     symbol_key = call.data
@@ -123,7 +144,9 @@ def callback_query(call):
             reply_markup=get_main_keyboard()
         )
 
+# 8. تشغيل الاستماع المستمر للرسائل
 bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        
 
 
 
