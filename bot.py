@@ -123,7 +123,7 @@ def callback_query(call):
             reply_markup=get_main_keyboard()
         )
 
-bot.bot.infinity_polling(timeout=60, long_polling_timeout=60)
+bot.infinity_polling(timeout=60, long_polling_timeout=60)
 
 
 
