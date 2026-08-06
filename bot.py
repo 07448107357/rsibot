@@ -30,10 +30,9 @@ def calculate_rsi(data, window=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-# 4. دالة التحليل الفني الموسعة (فريم 5 دقائق)
+# 4. دالة التحليل الفني (فريم 5 دقائق بشروط مرنة)
 def analyze_forex_pair(symbol):
     try:
-        # جلب بيانات فريم 5 دقائق لآخر 5 أيام لضمان دقة الحسابات
         df = yf.download(tickers=symbol, period="5d", interval="5m")
         if df.empty or len(df) < 35:
             return "❌ تعذر جلب بيانات كافية للسوق حالياً."
@@ -87,12 +86,12 @@ def analyze_forex_pair(symbol):
         if latest['Close'] <= latest['BB_Low']: buy_score += 1
         elif latest['Close'] >= latest['BB_High']: sell_score += 1
 
-        # صياغة النتيجة بناءً على قوة الشروط
-        if buy_score >= 3:
-            trend = "صاعد قوي ⬆️"
+        # صياغة النتيجة بناءً على الشروط المرنة
+        if buy_score >= 2 and buy_score > sell_score:
+            trend = "صاعد ⬆️"
             signal = f"🟢 **BUY SIGNAL (CALL / UP)**\n🎯 نسبة التوافق: {buy_score * 25}%"
-        elif sell_score >= 3:
-            trend = "هابط قوي ⬇️"
+        elif sell_score >= 2 and sell_score > buy_score:
+            trend = "هابط ⬇️"
             signal = f"🔴 **SELL SIGNAL (PUT / DOWN)**\n🎯 نسبة التوافق: {sell_score * 25}%"
         else:
             trend = "متذبذب ⚖️"
@@ -144,19 +143,10 @@ def callback_query(call):
             reply_markup=get_main_keyboard()
         )
 
-# 8. تشغيل الاستماع المستمر للرسائل
+# 8. حذف أي Webhook قديم وتشغيل البوت
 bot.remove_webhook()
 bot.infinity_polling(timeout=60, long_polling_timeout=60)
-        # تقييم الإشارات بشروط أكثر مرونة
-        if buy_score >= 2 and buy_score > sell_score:
-            trend = "صاعد ⬆️"
-            signal = f"🟢 **BUY SIGNAL (CALL / UP)**\n🎯 نسبة التوافق: {buy_score * 25}%"
-        elif sell_score >= 2 and sell_score > buy_score:
-            trend = "هابط ⬇️"
-            signal = f"🔴 **SELL SIGNAL (PUT / DOWN)**\n🎯 نسبة التوافق: {sell_score * 25}%"
-        else:
-            trend = "متذبذب ⚖️"
-            signal = "⚪ **السوق غير واضح (انتظر فرصة أفضل)**"
+
             
 
 
