@@ -1,113 +1,61 @@
-import os
-import time
-import telebot
-from telebot import types
-import pandas as pd
 import yfinance as yf
+import pandas as pd
+import ta
 
-BOT_TOKEN = os.environ.get('BOT_TOKEN')
-bot = telebot.TeleBot(BOT_TOKEN)
-
-PAIRS = {
-    "EUR/USD": "EURUSD=X",
-    "GBP/USD": "GBPUSD=X",
-    "AUD/USD": "AUDUSD=X",
-    "USD/JPY": "USDJPY=X",
-    "USD/CHF": "USDCHF=X",
-    "USD/CAD": "USDCAD=X",
-    "EUR/GBP": "EURGBP=X",
-    "EUR/JPY": "EURJPY=X",
-    "GBP/JPY": "GBPJPY=X",
-    "Gold (XAU/USD)": "GC=F"
-}
-
-def analyze_market(ticker_symbol):
-    try:
-        data = yf.download(tickers=ticker_symbol, period="1d", interval="1m", progress=False)
-        if len(data) < 20:
-            return None, None
-        
-        close_prices = data['Close']
-        if isinstance(close_prices, pd.DataFrame):
-            close_prices = close_prices.iloc[:, 0]
-            
-        delta = close_prices.diff()
-        gain = delta.clip(lower=0).rolling(window=14).mean()
-        loss = (-delta.clip(upper=0)).rolling(window=14).mean()
-        
-        last_gain = gain.iloc[-1]
-        last_loss = loss.iloc[-1]
-        
-        if pd.isna(last_gain) or pd.isna(last_loss) or (last_gain == 0 and last_loss == 0):
-            return None, None
-            
-        rs = last_gain / (last_loss if last_loss != 0 else 1)
-        rsi = 100.0 - (100.0 / (1.0 + rs))
-        
-        ema_20 = close_prices.ewm(span=20, adjust=False).mean().iloc[-1]
-        last_price = close_prices.iloc[-1]
-        
-        trend = "UP" if last_price >= ema_20 else "DOWN"
-        
-        return float(rsi), trend
-    except Exception as e:
-        print(f"Error analyzing {ticker_symbol}: {e}")
-        return None, None
-
-def build_pairs_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=3)
-    buttons = [types.InlineKeyboardButton(text=pair, callback_data=f"get_{pair}") for pair in PAIRS.keys()]
-    markup.add(*buttons)
-    return markup
-
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    welcome_text = "📲 **نظام الإشارات الفورية:**\nاختر زوج العملات للحصول على إشارة التداول:"
-    bot.reply_to(message, welcome_text, reply_markup=build_pairs_keyboard(), parse_mode='Markdown')
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('get_'))
-def handle_pair_selection(call):
-    pair_display = call.data.replace('get_', '')
-    ticker_symbol = PAIRS.get(pair_display)
+def analyze_forex_pair(symbol="EURUSD=X", timeframe="5m", period="1d"):
+    """
+    جلب بيانات الزوج وتحليله
+    symbol: رمز الزوج في Yahoo Finance (مثل EURUSD=X أو GBPUSD=X أو GC=F للذهب)
+    timeframe: الفريم الزمني (1m, 5m, 15m, 1h)
+    """
+    # 1. جلب بيانات الأسعار من السوق الحقيقي
+    data = yf.download(tickers=symbol, period=period, interval=timeframe)
     
-    bot.answer_callback_query(call.id, text=f"Analyzing {pair_display}...")
+    if data.empty:
+        return "فشل في جلب البيانات، تأكد من الرمز."
+
+    # تنظيف البيانات
+    df = data.copy()
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    # 2. حساب المؤشرات الفنية (EMA, RSI, MACD)
+    df['EMA_Fast'] = ta.trend.ema_indicator(df['Close'], window=9)
+    df['EMA_Slow'] = ta.trend.ema_indicator(df['Close'], window=21)
+    df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
     
-    rsi_val, trend = analyze_market(ticker_symbol)
+    macd = ta.trend.MACD(df['Close'])
+    df['MACD'] = macd.macd()
+    df['MACD_Signal'] = macd.macd_signal()
     
-    if rsi_val is None:
-        msg = f"⚠️ **{pair_display}**\nبيانات السوق غير متوفرة حالياً."
+    # 3. فحص أحدث شمعة في السوق
+    latest = df.iloc[-1]
+    price = round(latest['Close'], 5)
+    rsi_val = round(latest['RSI'], 2)
+    
+    # شروط الإشارات
+    buy_signal = (
+        (latest['EMA_Fast'] > latest['EMA_Slow']) and 
+        (latest['RSI'] > 50 and latest['RSI'] < 70) and 
+        (latest['MACD'] > latest['MACD_Signal'])
+    )
+    
+    sell_signal = (
+        (latest['EMA_Fast'] < latest['EMA_Slow']) and 
+        (latest['RSI'] < 50 and latest['RSI'] > 30) and 
+        (latest['MACD'] < latest['MACD_Signal'])
+    )
+    
+    if buy_signal:
+        return f"🟢 إشارة شراء قوية (CALL / BUY)\nالزوج: {symbol}\nالسعر: {price}\nRSI: {rsi_val}"
+    elif sell_signal:
+        return f"🔴 إشارة بيع قوية (PUT / SELL)\nالزوج: {symbol}\nالسعر: {price}\nRSI: {rsi_val}"
     else:
-        if rsi_val <= 50:
-            if rsi_val <= 35:
-                signal_type = "🟢 **STRONG BUY SIGNAL (CALL / UP)**\n🎯 **السبب:** تشبع بيعي قوي (Oversold)"
-            else:
-                signal_type = "🟢 **BUY SIGNAL (CALL / UP)**\n🎯 **السبب:** المؤشر في النصف السفلي ويتجه للصعود"
-        else:
-            if rsi_val >= 65:
-                signal_type = "🔴 **STRONG SELL SIGNAL (PUT / DOWN)**\n🎯 **السبب:** تشبع شرائي قوي (Overbought)"
-            else:
-                signal_type = "🔴 **SELL SIGNAL (PUT / DOWN)**\n🎯 **السبب:** المؤشر في النصف العلوي ويتجه للهبوط"
-            
-        msg = (
-            f"📊 **Asset:** {pair_display}\n"
-            f"📈 **RSI (1M):** {rsi_val:.1f}\n"
-            f"📉 **Trend:** {trend}\n"
-            f"⏱ **Duration:** 1 Minute\n\n"
-            f"{signal_type}"
-        )
-    
-    bot.send_message(call.message.chat.id, msg, reply_markup=build_pairs_keyboard(), parse_mode='Markdown')
+        return f"⚪ السوق في حالة تذبذب (انتظر)\nالزوج: {symbol}\nالسعر: {price}\nRSI: {rsi_val}"
 
-if __name__ == '__main__':
-    print("Clearing old sessions...")
-    time.sleep(3)
-    try:
-        bot.remove_webhook()
-    except Exception as e:
-        print(f"Webhook cleanup note: {e}")
-        
-    print("Starting bot polling safely...")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5, skip_pending=True)
+# تجربة الكود على زوج اليورو/دولار
+print(analyze_forex_pair("EURUSD=X", timeframe="5m"))
+
     
     
     
