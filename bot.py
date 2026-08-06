@@ -147,7 +147,17 @@ def callback_query(call):
 # 8. تشغيل الاستماع المستمر للرسائل
 bot.remove_webhook()
 bot.infinity_polling(timeout=60, long_polling_timeout=60)
-
+        # تقييم الإشارات بشروط أكثر مرونة
+        if buy_score >= 2 and buy_score > sell_score:
+            trend = "صاعد ⬆️"
+            signal = f"🟢 **BUY SIGNAL (CALL / UP)**\n🎯 نسبة التوافق: {buy_score * 25}%"
+        elif sell_score >= 2 and sell_score > buy_score:
+            trend = "هابط ⬇️"
+            signal = f"🔴 **SELL SIGNAL (PUT / DOWN)**\n🎯 نسبة التوافق: {sell_score * 25}%"
+        else:
+            trend = "متذبذب ⚖️"
+            signal = "⚪ **السوق غير واضح (انتظر فرصة أفضل)**"
+            
 
 
 
