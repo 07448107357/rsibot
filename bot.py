@@ -55,6 +55,7 @@ def analyze_forex_pair(symbol="EURUSD=X", timeframe="5m", period="1d"):
 
 # تجربة الكود على زوج اليورو/دولار
 print(analyze_forex_pair("EURUSD=X", timeframe="5m"))
+bot.infinity_polling()
 
     
     
