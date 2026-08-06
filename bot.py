@@ -145,9 +145,9 @@ def callback_query(call):
         )
 
 # 8. تشغيل الاستماع المستمر للرسائل
+bot.remove_webhook()
 bot.infinity_polling(timeout=60, long_polling_timeout=60)
- bot.remove_webhook()
-bot.infinity_polling(timeout=60, long_polling_timeout=60)
+
 
 
 
