@@ -34,11 +34,12 @@ ASSETS = {
 # 3. دالة التحليل
 def analyze_asset(ticker_symbol):
     try:
-        ticker = yf.Ticker(ticker_symbol)
-        df = ticker.history(period="1mo", interval="1d")
-
-        if df.empty or len(df) < 30:
+                # جلب البيانات مباشرة لمتغير df
+        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
+        
+        if df.empty or len(df) < 20:
             return "❌ لا توجد بيانات كافية للتحليل حالياً."
+            
 
         df['SMA20'] = df['Close'].rolling(window=20).mean()
         df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
