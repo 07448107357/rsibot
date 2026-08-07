@@ -96,13 +96,19 @@ def get_analysis(symbol_key):
         else:
             direction = "هابط ⬇️"
 
-        # 2. تحديد التوصية بشرط التوافق مع الاتجاه العام
-        if price > sma and rsi < 45:
+        
+                # 2. تحديد التوصية بشروط متوازنة للتداول
+        if price > sma and rsi < 55:
             signal = "🟢 BUY SIGNAL (CALL / UP)"
-        elif price < sma and rsi > 55:
+        elif price < sma and rsi > 45:
             signal = "🔴 SELL SIGNAL (PUT / DOWN)"
+        elif rsi >= 70:
+            signal = "🔴 SELL SIGNAL (OVERBOUGHT / PUT)"
+        elif rsi <= 30:
+            signal = "🟢 BUY SIGNAL (OVERSOLD / CALL)"
         else:
             signal = "⚪️ NEUTRAL (WAIT)"
+            
 
         msg = (
             f"📊 **تحليل الزوج:** {symbol_key}\n"
