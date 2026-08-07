@@ -97,13 +97,15 @@ def get_analysis(symbol_key):
             direction = "هابط ⬇️"
 
         
-                    # 2. التداول مع الاتجاه العام فقط (Strict Trend Following)
-        if price > sma and rsi < 50:
+
+                # 2. التداول مع الاتجاه بنطاق مرن وممتاز
+        if price > sma and rsi < 65:
             signal = "🟢 BUY SIGNAL (CALL / UP)"
-        elif price < sma and rsi > 50:
+        elif price < sma and rsi > 35:
             signal = "🔴 SELL SIGNAL (PUT / DOWN)"
         else:
             signal = "⚪️ NEUTRAL (WAIT)"
+            
             
             
 
