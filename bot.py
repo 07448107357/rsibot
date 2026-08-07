@@ -166,8 +166,13 @@ def callback_query(call):
         )
 
 # 8. حذف أي Webhook قديم وتشغيل البوت
+# 8. تنظيف الشات وإيقاف الجلسات القديمة قبل التشغيل
+import time
+
 bot.remove_webhook()
-bot.infinity_polling(timeout=60, long_polling_timeout=60)
+time.sleep(2)
+bot.infinity_polling(timeout=60, long_polling_timeout=60, skip_pending=True)
+
 
 
             
