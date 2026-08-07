@@ -133,11 +133,12 @@ def build_keyboard():
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(
-        message,
+    bot.send_message(
+        message.chat.id,
         "أهلاً بك! اختر الزوج للحصول على تحليل فني وتوصية تداول (5m):",
         reply_markup=build_keyboard()
     )
+    
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
