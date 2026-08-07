@@ -96,10 +96,20 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['menu'])
 def show_menu(message):
-    msg = "📋 **اختر الأصل لتحليله واستخراج الإشارة:**\n\n"
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    buttons = []
     for name, symbol in ASSETS.items():
-        msg += f"• {name} 👈 `{symbol}`\n"
-    bot.reply_to(message, msg, parse_mode="Markdown")
+        buttons.append(telebot.types.InlineKeyboardButton(text=name, callback_data=symbol))
+    markup.add(*buttons)
+    bot.reply_to(message, "📋 **اختر الأصل لتحليله واستخرج الإشارة:**", reply_markup=markup, parse_mode="Markdown")
+
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    bot.answer_callback_query(call.id, "جاري تحليل الأصل...")
+    result = analyze_asset(call.data)
+    bot.send_message(call.message.chat.id, result, parse_mode="Markdown")
+    
+
 
 # 5. تشغيل البوت في النهاية فقط
 if __name__ == "__main__":
