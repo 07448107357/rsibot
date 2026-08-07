@@ -63,8 +63,10 @@ PAIRS = {
 }
 
         # 1. حساب المؤشرات الإضافية
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-        
+
+
+       df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
+
         # Stochastic Oscillator (14, 3, 3)
         low_min = df['Low'].rolling(window=14).min()
         high_max = df['High'].rolling(window=14).max()
