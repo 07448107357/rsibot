@@ -149,7 +149,8 @@ def handle_message(message):
         bot.send_message(message.chat.id, "الرجاء اختيار زوج من القائمة أدناه.", reply_markup=build_keyboard())
 
 if __name__ == "__main__":
-    bot.infinity_polling()
+    bot.infinity_polling(skip_pending=True)
+    
                 
 
 
