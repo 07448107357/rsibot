@@ -4,7 +4,7 @@ import yfinance as yf
 import pandas as pd
 
 # 1. تعريف البوت والتوكين في البداية
-TOKEN = os.getenv("8920172447:AAH5vrDTW2ucm9B-gxtdXKVpqK9-pGF4w64")
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 
