@@ -96,10 +96,10 @@ def get_analysis(symbol_key):
         else:
             direction = "هابط ⬇️"
 
-        # 2. تحديد التوصية بمرونة أكثر (RSI)
-        if rsi < 42:
+        # 2. تحديد التوصية بشرط التوافق مع الاتجاه العام
+        if price > sma and rsi < 45:
             signal = "🟢 BUY SIGNAL (CALL / UP)"
-        elif rsi > 58:
+        elif price < sma and rsi > 55:
             signal = "🔴 SELL SIGNAL (PUT / DOWN)"
         else:
             signal = "⚪️ NEUTRAL (WAIT)"
@@ -159,6 +159,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Polling error: {e}")
             time.sleep(5)
+            
             
             
             
