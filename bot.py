@@ -4,8 +4,9 @@ import yfinance as yf
 import pandas as pd
 
 # 1. تعريف البوت والتوكين في البداية
-TOKEN = "8920172447:AAGiTv913UlDtDn520xS8vNrfqdRdAR1YM"
+TOKEN = os.getenv("8920172447:AAH5vrDTW2ucm9B-gxtdXKVpqK9-pGF4w64")
 bot = telebot.TeleBot(TOKEN)
+
 
 # 2. قائمة الأصول
 ASSETS = {
