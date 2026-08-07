@@ -9,16 +9,57 @@ TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
 PAIRS = {
+    # --- أزواج العملات الرئيسية (Majors) ---
     "EUR/USD": "EURUSD=X",
     "GBP/USD": "GBPUSD=X",
     "AUD/USD": "AUDUSD=X",
+    "NZD/USD": "NZDUSD=X",
     "USD/JPY": "USDJPY=X",
     "USD/CHF": "USDCHF=X",
     "USD/CAD": "USDCAD=X",
+
+    # --- أزواج اليورو (EUR Pairs) ---
     "EUR/GBP": "EURGBP=X",
     "EUR/JPY": "EURJPY=X",
+    "EUR/CHF": "EURCHF=X",
+    "EUR/CAD": "EURCAD=X",
+    "EUR/AUD": "EURAUD=X",
+    "EUR/NZD": "EURNZD=X",
+
+    # --- أزواج الباوند (GBP Pairs) ---
     "GBP/JPY": "GBPJPY=X",
-    "Gold (XAU/USD)": "GC=F"
+    "GBP/CHF": "GBPCHF=X",
+    "GBP/CAD": "GBPCAD=X",
+    "GBP/AUD": "GBPAUD=X",
+    "GBP/NZD": "GBPNZD=X",
+
+    # --- أزواج الين والفرنك والكرونا (Cross Pairs) ---
+    "AUD/JPY": "AUDJPY=X",
+    "AUD/CAD": "AUDCAD=X",
+    "AUD/NZD": "AUDNZD=X",
+    "AUD/CHF": "AUDCHF=X",
+    "CAD/JPY": "CADJPY=X",
+    "CAD/CHF": "CADCHF=X",
+    "CHF/JPY": "CHFJPY=X",
+    "NZD/JPY": "NZDJPY=X",
+    "NZD/CAD": "NZDCAD=X",
+    "NZD/CHF": "NZDCHF=X",
+
+    # --- المعادن والسلع (Commodities) ---
+    "Gold (XAU/USD)": "GC=F",
+    "Silver (XAG/USD)": "SI=F",
+    "Crude Oil (USOIL)": "CL=F",
+
+    # --- الأسهم العالمية المتاحة في المنصة (Stocks) ---
+    "Apple 🍎": "AAPL",
+    "Amazon 📦": "AMZN",
+    "McDonald's 🍔": "MCD",
+    "Meta (Facebook) 🌐": "META",
+    "Google 🔍": "GOOGL",
+    "Tesla ⚡️": "TSLA",
+    "Microsoft 💻": "MSFT",
+    "Boeing ✈️": "BA",
+    "Intel 💻": "INTC"
 }
 
 def calculate_rsi(data, window=14):
@@ -77,7 +118,6 @@ def get_analysis(symbol_key):
         return msg
     except Exception as e:
         return f"⚠️ حدث خطأ أثناء التحليل: {e}"
-        
 
 def build_inline_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=3)
@@ -89,7 +129,7 @@ def build_inline_keyboard():
 def send_welcome(message):
     bot.send_message(
         message.chat.id,
-        "أهلاً بك! اختر الزوج للحصول على تحليل فني وتوصية تداول (5m):",
+        "أهلاً بك! اختر الزوج أو السهم للحصول على تحليل فني وتوصية تداول (5m):",
         reply_markup=build_inline_keyboard(),
         parse_mode="Markdown"
     )
@@ -119,6 +159,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Polling error: {e}")
             time.sleep(5)
+            
             
             
             
