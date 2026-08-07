@@ -62,108 +62,39 @@ PAIRS = {
     "Intel 💻": "INTC"
 }
 
-def calculate_rsi(data, window=14):
-    delta = data.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
-
-def get_analysis(symbol_key):
-    ticker = PAIRS.get(symbol_key, symbol_key)
-    try:
-        df = yf.download(tickers=ticker, period="1d", interval="5m", progress=False)
-        if df.empty or len(df) < 30:
-            return "❌ لا تتوفر البيانات الكافية لهذا الزوج حالياً"
-
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        df['RSI'] = calculate_rsi(df['Close'])
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
+        # 1. حساب المؤشرات الإضافية
+        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
         
-        latest = df.iloc[-1]
-        price = round(float(latest['Close']), 4)
-        rsi = round(float(latest['RSI']), 2)
-        sma = float(latest['SMA20'])
-
-        support = round(float(df['Low'].tail(20).min()), 4)
-        resistance = round(float(df['High'].tail(20).max()), 4)
-
-        # 1. تحديد الاتجاه بناءً على المتوسط المتحرك (SMA20)
-        if price > sma:
-            direction = "صاعد ⬆️"
-        else:
-            direction = "هابط ⬇️"
-
+        # Stochastic Oscillator (14, 3, 3)
+        low_min = df['Low'].rolling(window=14).min()
+        high_max = df['High'].rolling(window=14).max()
+        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
+        df['%D'] = df['%K'].rolling(window=3).mean()
         
+        stoch_k = round(float(df['%K'].iloc[-1]), 2)
+        stoch_d = round(float(df['%D'].iloc[-1]), 2)
+        ema200 = float(df['EMA200'].iloc[-1])
 
-                # 2. التداول مع الاتجاه بنطاق مرن وممتاز
-        if price > sma and rsi < 65:
-            signal = "🟢 BUY SIGNAL (CALL / UP)"
-        elif price < sma and rsi > 35:
-            signal = "🔴 SELL SIGNAL (PUT / DOWN)"
+        # 2. تحديد اتجاه السوق القوي (EMA 200 + SMA 20)
+        if price > ema200 and price > sma:
+            direction = "صاعد قوي ⬆️"
+        elif price < ema200 and price < sma:
+            direction = "هابط قوي ⬇️"
         else:
-            signal = "⚪️ NEUTRAL (WAIT)"
+            direction = "عرضي / غير مستقر 🔄"
+
+        # 3. شروط التوصية عالية الدقة (High Accuracy Strategy)
+        # شراء: تريند صاعد + RSI في منطقة مناسبة + Stochastic يعطي تقاطع صاعد من الأسفل
+        if "صاعد" in direction and rsi < 60 and stoch_k < 40 and stoch_k > stoch_d:
+            signal = "🟢 STRONG BUY (CALL / UP) 🔥"
+        
+        # بيع: تريند هابط + RSI في منطقة مناسبة + Stochastic يعطي تقاطع هابط من الأعلى
+        elif "هابط" in direction and rsi > 40 and stoch_k > 60 and stoch_k < stoch_d:
+            signal = "🔴 STRONG SELL (PUT / DOWN) 🔥"
             
-            
-            
+        else:
+            signal = "⚪️ NEUTRAL (WAIT FOR SETUP)"
 
-        msg = (
-            f"📊 **تحليل الزوج:** {symbol_key}\n"
-            f"⏱ **الفريم:** 5 دقائق (5m)\n"
-            f"💵 **السعر الحالي:** {price}\n"
-            f"🧱 **المقاومة القريبة:** {resistance}\n"
-            f"🛡 **الدعم القريب:** {support}\n"
-            f"📈 **الاتجاه:** {direction}\n\n"
-            f"📉 **RSI (14):** {rsi}\n"
-            f"-------------------------------\n"
-            f"🎯 {signal}"
-        )
-        return msg
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {e}"
-
-def build_inline_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=3)
-    buttons = [types.InlineKeyboardButton(text=pair, callback_data=pair) for pair in PAIRS.keys()]
-    markup.add(*buttons)
-    return markup
-
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.send_message(
-        message.chat.id,
-        "أهلاً بك! اختر الزوج أو السهم للحصول على تحليل فني وتوصية تداول (5m):",
-        reply_markup=build_inline_keyboard(),
-        parse_mode="Markdown"
-    )
-
-@bot.callback_query_handler(func=lambda call: True)
-def handle_callback(call):
-    if call.data in PAIRS:
-        bot.answer_callback_query(call.id, "جاري التحليل...")
-        bot.send_message(call.message.chat.id, "⏳ جاري تحليل الزوج...")
-        analysis = get_analysis(call.data)
-        bot.send_message(
-            call.message.chat.id, 
-            analysis, 
-            reply_markup=build_inline_keyboard(),
-            parse_mode="Markdown"
-        )
-
-if __name__ == "__main__":
-    try:
-        bot.remove_webhook()
-    except Exception:
-        pass
-
-    while True:
-        try:
-            bot.polling(none_stop=True, interval=2, timeout=30, skip_pending=True)
-        except Exception as e:
-            print(f"Polling error: {e}")
-            time.sleep(5)
             
             
             
