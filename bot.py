@@ -22,7 +22,7 @@ PAIR_MAP = {
     "Gold (XAU/USD)": "GC=F"
 }
 
-# 3. دالة حساب RSI يدوياً
+# 3. دالة حساب RSI
 def calculate_rsi(data, window=14):
     delta = data.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
@@ -30,7 +30,7 @@ def calculate_rsi(data, window=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-# 4. دالة التحليل الفني (فريم 5 دقائق بشروط مرنة)
+# 4. دالة التحليل الفني مع فلتر الدعم والمقاومة
 def analyze_forex_pair(symbol):
     try:
         df = yf.download(tickers=symbol, period="5d", interval="5m")
@@ -41,6 +41,8 @@ def analyze_forex_pair(symbol):
             df.columns = df.columns.get_level_values(0)
 
         close_prices = df['Close']
+        high_prices = df['High']
+        low_prices = df['Low']
 
         # حساب المتوسطات المتحركة EMA
         df['EMA_Fast'] = close_prices.ewm(span=9, adjust=False).mean()
@@ -60,6 +62,10 @@ def analyze_forex_pair(symbol):
         df['STD20'] = close_prices.rolling(window=20).std()
         df['BB_High'] = df['SMA20'] + (df['STD20'] * 2)
         df['BB_Low'] = df['SMA20'] - (df['STD20'] * 2)
+
+        # حساب مستويات الدعم والمقاومة من آخر 30 شمعة
+        resistance_level = high_prices.tail(30).max()
+        support_level = low_prices.tail(30).min()
 
         # قراءة الشمعة الأخيرة
         latest = df.iloc[-1]
@@ -86,13 +92,27 @@ def analyze_forex_pair(symbol):
         if latest['Close'] <= latest['BB_Low']: buy_score += 1
         elif latest['Close'] >= latest['BB_High']: sell_score += 1
 
-        # صياغة النتيجة بناءً على الشروط المرنة
+        # فلترة الإشارات بناءً على الدعم والمقاومة
+        # منطقة خطر الشراء: السعر قريب جداً من المقاومة (أقل من 0.03% من المستوى)
+        near_resistance = (resistance_level - price) / price < 0.0003
+        # منطقة خطر البيع: السعر قريب جداً من الدعم
+        near_support = (price - support_level) / price < 0.0003
+
         if buy_score >= 2 and buy_score > sell_score:
-            trend = "صاعد ⬆️"
-            signal = f"🟢 **BUY SIGNAL (CALL / UP)**\n🎯 نسبة التوافق: {buy_score * 25}%"
+            if near_resistance:
+                trend = "صاعد لكن قرب مقاومة ⚠️"
+                signal = "⚪ **تنبيه:** المؤشرات صاعدة ولكن السعر اصطدم بالمقاومة! (تجنب الشراء)"
+            else:
+                trend = "صاعد ⬆️"
+                signal = f"🟢 **BUY SIGNAL (CALL / UP)**\n🎯 نسبة التوافق: {buy_score * 25}%"
+
         elif sell_score >= 2 and sell_score > buy_score:
-            trend = "هابط ⬇️"
-            signal = f"🔴 **SELL SIGNAL (PUT / DOWN)**\n🎯 نسبة التوافق: {sell_score * 25}%"
+            if near_support:
+                trend = "هابط لكن قرب دعم ⚠️"
+                signal = "⚪ **تنبيه:** المؤشرات هابطة ولكن السعر اصطدم بالدعم! (تجنب البيع)"
+            else:
+                trend = "هابط ⬇️"
+                signal = f"🔴 **SELL SIGNAL (PUT / DOWN)**\n🎯 نسبة التوافق: {sell_score * 25}%"
         else:
             trend = "متذبذب ⚖️"
             signal = "⚪ **السوق غير واضح (انتظر فرصة أفضل)**"
@@ -101,6 +121,8 @@ def analyze_forex_pair(symbol):
             f"📊 **تحليل الزوج:** {symbol}\n"
             f"⏱️ **الفريم:** 5 دقائق (5m)\n"
             f"💵 **السعر الحالي:** {price}\n"
+            f"🧱 **المقاومة القريبة:** {round(float(resistance_level), 5)}\n"
+            f"🛡️ **الدعم القريب:** {round(float(support_level), 5)}\n"
             f"📈 **الاتجاه:** {trend}\n"
             f"📉 **RSI (14):** {rsi_val}\n"
             f"─────────────────\n"
@@ -122,7 +144,7 @@ def get_main_keyboard():
 def send_welcome(message):
     bot.send_message(
         message.chat.id, 
-        "🤖 **مرحباً بك في بوت الإشارات الفنية (فريم 5m)**\nاختر الزوج الذي تريد تحليله من القائمة أدناه:", 
+        "🤖 **مرحباً بك في بوت الإشارات الفنية (مُزود بفلتر الدعم والمقاومة)**\nاختر الزوج الذي تريد تحليله من القائمة أدناه:", 
         parse_mode="Markdown",
         reply_markup=get_main_keyboard()
     )
@@ -146,6 +168,7 @@ def callback_query(call):
 # 8. حذف أي Webhook قديم وتشغيل البوت
 bot.remove_webhook()
 bot.infinity_polling(timeout=60, long_polling_timeout=60)
+
 
             
 
