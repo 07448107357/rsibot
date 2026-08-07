@@ -150,20 +150,19 @@ def handle_message(message):
 
 if __name__ == "__main__":
     import time
-    
-    # حذف أي Webhook قديم أو اتصالات معلقة
+
     try:
         bot.remove_webhook()
-    except Exception as e:
-        print(f"Webhook cleanup note: {e}")
+    except Exception:
+        pass
 
-    # إعادة المحاولة تلقائياً عند حدوث التعارض (Conflict)
     while True:
         try:
-            bot.polling(none_stop=True, interval=1, timeout=20, skip_pending=True)
+            bot.polling(none_stop=True, interval=2, timeout=30, skip_pending=True)
         except Exception as e:
-            print(f"Error occurred: {e}")
-            time.sleep(3)  # الانتظار 3 ثوانٍ قبل إعادة المحاولة لتفريغ الجلسة القديمة
+            print(f"Polling error: {e}")
+            time.sleep(5)
+            
             
     
                 
