@@ -34,6 +34,51 @@ ASSETS = {
 # 3. دالة التحليل
 def analyze_asset(ticker_symbol):
     try:
+        # جلب البيانات بفاصل 5 دقائق
+        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
+        
+        if df.empty or len(df) < 20:
+            return "❌ لا توجد بيانات كافية للتحليل حالياً."
+
+        # حساب المؤشرات
+        df['SMA20'] = df['Close'].rolling(window=20).mean()
+        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
+
+        # حساب Stochastic
+        low_min = df['Low'].rolling(window=14).min()
+        high_max = df['High'].rolling(window=14).max()
+        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
+        df['%D'] = df['%K'].rolling(window=3).mean()
+
+        # حساب RSI
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+
+        # استخراج آخر القيم باستخدام .item() لمنع خطأ Series
+        last_price = float(df['Close'].iloc[-1].item())
+        last_rsi = float(df['RSI'].iloc[-1].item())
+        last_k = float(df['%K'].iloc[-1].item())
+        last_d = float(df['%D'].iloc[-1].item())
+        last_sma = float(df['SMA20'].iloc[-1].item())
+        last_ema = float(df['EMA200'].iloc[-1].item())
+
+        # صياغة رسالة التحليل
+        analysis = (
+            f"📊 **تحليل السعر والمؤشرات:**\n\n"
+            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
+            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
+            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
+            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
+            f"📊 **EMA 200:** `{last_ema:.4f}`\n"
+        )
+        return analysis
+
+    except Exception as e:
+        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
+        
                 # جلب البيانات مباشرة لمتغير df
         df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
         
