@@ -7,7 +7,10 @@ import pandas as pd
 # 1. إعدادات البوت وقائمة الأصول (عملات، أسهم، معادن)
 # ---------------------------------------------------------
 TOKEN = "8920172447:AAGItv913UIlDtDn520xS8vNrfqdRdAR1YM"
-bot = telebot.TeleBot(TOKEN)
+if __name__ == "__main__":
+    print("Bot is running...")
+    bot.infinity_polling(timeout=60, long_polling_timeout=60)
+    
 
 
 
