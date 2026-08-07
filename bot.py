@@ -6,7 +6,9 @@ import pandas as pd
 # ---------------------------------------------------------
 # 1. إعدادات البوت وقائمة الأصول (عملات، أسهم، معادن)
 # ---------------------------------------------------------
-8920172447:AAGItv913UIlDtDn520xS8vNrfqdRdAR1YM
+TOKEN = "8920172447:AAGItv913UIlDtDn520xS8vNrfqdRdAR1YM"
+bot = telebot.TeleBot(TOKEN)
+
 
 
 ASSETS = {
