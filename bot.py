@@ -6,8 +6,9 @@ import pandas as pd
 # ---------------------------------------------------------
 # 1. إعدادات البوت وقائمة الأصول (عملات، أسهم، معادن)
 # ---------------------------------------------------------
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TOKEN = "YOUR_BOT_TOKEN_HERE"
 bot = telebot.TeleBot(TOKEN)
+
 
 ASSETS = {
     # 💱 سوق العملات الأجنبية (Forex)
