@@ -1,8 +1,9 @@
 import os
+import time
 import telebot
+from telebot import types
 import yfinance as yf
 import pandas as pd
-from telebot import types
 
 TOKEN = os.environ.get("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
@@ -32,102 +33,47 @@ def get_analysis(symbol_key):
     try:
         df = yf.download(tickers=ticker, period="1d", interval="5m", progress=False)
         if df.empty or len(df) < 30:
-            return "❌ تعذر جلب البيانات الكافية لهذا الزوج حالياً."
-        
+            return "❌ لا تتوفر البيانات الكافية لهذا الزوج حالياً"
+
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        close_prices = df['Close']
-        high_prices = df['High']
-        low_prices = df['Low']
+        df['RSI'] = calculate_rsi(df['Close'])
+        latest = df.iloc[-1]
+        price = round(float(latest['Close']), 4)
+        rsi = round(float(latest['RSI']), 2)
 
-        # حساب المتوسطات
-        df['EMA_Fast'] = close_prices.ewm(span=9, adjust=False).mean()
-        df['EMA_Slow'] = close_prices.ewm(span=21, adjust=False).mean()
+        support = round(float(df['Low'].tail(20).min()), 4)
+        resistance = round(float(df['High'].tail(20).max()), 4)
 
-        # حساب RSI
-        df['RSI'] = calculate_rsi(close_prices, 14)
-
-        # حساب MACD
-        ema12 = close_prices.ewm(span=12, adjust=False).mean()
-        ema26 = close_prices.ewm(span=26, adjust=False).mean()
-        df['MACD'] = ema12 - ema26
-        df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
-
-        # حساب Bollinger Bands
-        df['SMA20'] = close_prices.rolling(window=20).mean()
-        df['STD20'] = close_prices.rolling(window=20).std()
-        df['BB_High'] = df['SMA20'] + (df['STD20'] * 2)
-        df['BB_Low'] = df['SMA20'] - (df['STD20'] * 2)
-
-        last_row = df.iloc[-1]
-        price = round(float(last_row['Close']), 2)
-        rsi_val = round(float(last_row['RSI']), 2)
-        
-        # حساب الدعم والمقاومة
-        support_level = float(low_prices.tail(20).min())
-        resistance_level = float(high_prices.tail(20).max())
-
-        near_support = abs(price - support_level) / price < 0.001
-        near_resistance = abs(price - resistance_level) / price < 0.001
-
-        # نظام النقاط للتوصية
-        buy_score = 0
-        sell_score = 0
-
-        if rsi_val < 35: buy_score += 1
-        elif rsi_val > 65: sell_score += 1
-
-        if last_row['EMA_Fast'] > last_row['EMA_Slow']: buy_score += 1
-        elif last_row['EMA_Fast'] < last_row['EMA_Slow']: sell_score += 1
-
-        if last_row['MACD'] > last_row['MACD_Signal']: buy_score += 1
-        elif last_row['MACD'] < last_row['MACD_Signal']: sell_score += 1
-
-        if price <= last_row['BB_Low']: buy_score += 1
-        elif price >= last_row['BB_High']: sell_score += 1
-
-        # إعداد التوصية والتنبيه مع الدعم والمقاومة
-        if buy_score >= 2 and buy_score > sell_score:
-            if near_resistance:
-                trend = "صاعد لكن قرب مقاومة ⚠️"
-                signal = "🟢 **BUY SIGNAL (CALL / UP)**\n⚠️ *تنبيه: السعر قريب من المقاومة!*"
-            else:
-                trend = "صاعد ⬆️"
-                signal = "🟢 **BUY SIGNAL (CALL / UP)**"
-
-        elif sell_score >= 2 and sell_score > buy_score:
-            if near_support:
-                trend = "هابط لكن قرب دعم ⚠️"
-                signal = "🔴 **SELL SIGNAL (PUT / DOWN)**\n⚠️ *تنبيه: السعر قريب من الدعم!*"
-            else:
-                trend = "هابط ⬇️"
-                signal = "🔴 **SELL SIGNAL (PUT / DOWN)**"
-
+        if rsi < 35:
+            signal = "🟢 BUY SIGNAL (CALL / UP)"
+            direction = "صاعد ⬆️"
+        elif rsi > 65:
+            signal = "🔴 SELL SIGNAL (PUT / DOWN)"
+            direction = "هابط ⬇️"
         else:
-            trend = "متذبذب ⚖️"
-            signal = "⚪ **السوق غير واضح (انتظر فرصة أفضل)**"
+            signal = "⚪️ NEUTRAL (WAIT)"
+            direction = "مستقر ➡️"
 
-        clean_symbol = symbol_key
-
-        return (
-            f"📊 **تحليل الزوج:** {clean_symbol}\n"
-            f"⏱️ **الفريم:** 5 دقائق (5m)\n"
+        msg = (
+            f"📊 **تحليل الزوج:** {symbol_key}\n"
+            f"⏱ **الفريم:** 5 دقائق (5m)\n"
             f"💵 **السعر الحالي:** {price}\n"
-            f"🧱 **المقاومة القريبة:** {round(resistance_level, 2)}\n"
-            f"🛡️ **الدعم القريب:** {round(support_level, 2)}\n"
-            f"📈 **الاتجاه:** {trend}\n"
-            f"📉 **RSI (14):** {rsi_val}\n"
-            f"-----------------------------------\n"
-            f"{signal}"
+            f"🧱 **المقاومة القريبة:** {resistance}\n"
+            f"🛡 **الدعم القريب:** {support}\n"
+            f"📈 **الاتجاه:** {direction}\n\n"
+            f"📉 **RSI (14):** {rsi}\n"
+            f"-------------------------------\n"
+            f"🎯 {signal}"
         )
-
+        return msg
     except Exception as e:
         return f"⚠️ حدث خطأ أثناء التحليل: {e}"
 
-def build_keyboard():
-    markup = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
-    buttons = [types.KeyboardButton(pair) for pair in PAIRS.keys()]
+def build_inline_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    buttons = [types.InlineKeyboardButton(text=pair, callback_data=pair) for pair in PAIRS.keys()]
     markup.add(*buttons)
     return markup
 
@@ -136,23 +82,24 @@ def send_welcome(message):
     bot.send_message(
         message.chat.id,
         "أهلاً بك! اختر الزوج للحصول على تحليل فني وتوصية تداول (5m):",
-        reply_markup=build_keyboard()
+        reply_markup=build_inline_keyboard(),
+        parse_mode="Markdown"
     )
-    
 
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
-    text = message.text.strip() if message.text else ""
-    if text in PAIRS:
-        bot.send_message(message.chat.id, "⏳ جاري تحليل الزوج...")
-        analysis = get_analysis(text)
-        bot.send_message(message.chat.id, analysis)
-    else:
-        bot.send_message(message.chat.id, "الرجاء اختيار زوج من القائمة أدناه 👇", reply_markup=build_keyboard())
-        
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    if call.data in PAIRS:
+        bot.answer_callback_query(call.id, "جاري التحليل...")
+        bot.send_message(call.message.chat.id, "⏳ جاري تحليل الزوج...")
+        analysis = get_analysis(call.data)
+        bot.send_message(
+            call.message.chat.id, 
+            analysis, 
+            reply_markup=build_inline_keyboard(),
+            parse_mode="Markdown"
+        )
+
 if __name__ == "__main__":
-    import time
-
     try:
         bot.remove_webhook()
     except Exception:
@@ -164,6 +111,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Polling error: {e}")
             time.sleep(5)
+            
             
             
     
