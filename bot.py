@@ -149,7 +149,22 @@ def handle_message(message):
         bot.send_message(message.chat.id, "الرجاء اختيار زوج من القائمة أدناه.", reply_markup=build_keyboard())
 
 if __name__ == "__main__":
-    bot.infinity_polling(skip_pending=True)
+    import time
+    
+    # حذف أي Webhook قديم أو اتصالات معلقة
+    try:
+        bot.remove_webhook()
+    except Exception as e:
+        print(f"Webhook cleanup note: {e}")
+
+    # إعادة المحاولة تلقائياً عند حدوث التعارض (Conflict)
+    while True:
+        try:
+            bot.polling(none_stop=True, interval=1, timeout=20, skip_pending=True)
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            time.sleep(3)  # الانتظار 3 ثوانٍ قبل إعادة المحاولة لتفريغ الجلسة القديمة
+            
     
                 
 
