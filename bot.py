@@ -141,13 +141,14 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
-    if message.text in PAIRS:
-        bot.send_message(message.chat.id, "⏳ جاري تحليل السوق...")
-        analysis = get_analysis(message.text)
-        bot.send_message(message.chat.id, analysis, parse_mode="Markdown", reply_markup=build_keyboard())
+    text = message.text.strip() if message.text else ""
+    if text in PAIRS:
+        bot.send_message(message.chat.id, "⏳ جاري تحليل الزوج...")
+        analysis = get_analysis(text)
+        bot.send_message(message.chat.id, analysis)
     else:
-        bot.send_message(message.chat.id, "الرجاء اختيار زوج من القائمة أدناه.", reply_markup=build_keyboard())
-
+        bot.send_message(message.chat.id, "الرجاء اختيار زوج من القائمة أدناه 👇", reply_markup=build_keyboard())
+        
 if __name__ == "__main__":
     import time
 
