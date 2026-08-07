@@ -39,22 +39,29 @@ def get_analysis(symbol_key):
             df.columns = df.columns.get_level_values(0)
 
         df['RSI'] = calculate_rsi(df['Close'])
+        df['SMA20'] = df['Close'].rolling(window=20).mean()
+        
         latest = df.iloc[-1]
         price = round(float(latest['Close']), 4)
         rsi = round(float(latest['RSI']), 2)
+        sma = float(latest['SMA20'])
 
         support = round(float(df['Low'].tail(20).min()), 4)
         resistance = round(float(df['High'].tail(20).max()), 4)
 
-        if rsi < 35:
-            signal = "🟢 BUY SIGNAL (CALL / UP)"
+        # 1. تحديد الاتجاه بناءً على المتوسط المتحرك (SMA20)
+        if price > sma:
             direction = "صاعد ⬆️"
-        elif rsi > 65:
-            signal = "🔴 SELL SIGNAL (PUT / DOWN)"
+        else:
             direction = "هابط ⬇️"
+
+        # 2. تحديد التوصية بمرونة أكثر (RSI)
+        if rsi < 42:
+            signal = "🟢 BUY SIGNAL (CALL / UP)"
+        elif rsi > 58:
+            signal = "🔴 SELL SIGNAL (PUT / DOWN)"
         else:
             signal = "⚪️ NEUTRAL (WAIT)"
-            direction = "مستقر ➡️"
 
         msg = (
             f"📊 **تحليل الزوج:** {symbol_key}\n"
@@ -70,6 +77,7 @@ def get_analysis(symbol_key):
         return msg
     except Exception as e:
         return f"⚠️ حدث خطأ أثناء التحليل: {e}"
+        
 
 def build_inline_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=3)
