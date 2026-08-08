@@ -262,8 +262,10 @@ def callback_inline(call):
         data = call.data
         
         if "|" in data:
+            # إزالة استجابة الزر فوراً لمنع التكرار والنقر المزدوج
+            bot.answer_callback_query(call.id, text="جاري التحليل... برجاء الانتظار ⏳")
+            
             asset, interval = data.split("|")
-            bot.answer_callback_query(call.id, text=f"جاري تحليل {asset}...")
             
             symbol_map = {
                 "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
@@ -284,6 +286,7 @@ def callback_inline(call):
                 bot.send_message(call.message.chat.id, result)
             except Exception as e:
                 bot.send_message(call.message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
+                
                 
 
         # إذا قام المستخدم باختيار الزوج فقط، نعرض له أزرار الفريمات الزمنية
