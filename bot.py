@@ -525,17 +525,61 @@ def send_welcome(message):
     markup.add(*buttons)
     bot.reply_to(message, "📋 اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
 
+# الأسطر السابقة (send_welcome)
+@bot.message_handler(commands=['start', 'menu'])
+def send_welcome(message):
+    ...
+
+# --- ضع الكود الجديد هنا مباشرة (بدل الأسطر 528 - 538) ---
 @bot.message_handler(func=lambda message: message.text in ASSETS)
 def handle_asset_selection(message):
+    asset_name = message.text
+    symbol = ASSETS[asset_name]
+    
+    bot.reply_to(message, f"⏳ جاري جلب البيانات وتحليل {asset_name}...")
+    
     try:
-        asset_name = message.text
-        symbol = ASSETS[asset_name]
-        bot.reply_to(message, f"⏳ جاري تحليل `{asset_name}`...", parse_mode="Markdown")
-        result = analyze_asset(symbol)
-        bot.send_message(message.chat.id, result, parse_mode="Markdown")
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="7d", interval="15m")
         
+        if df.empty:
+            bot.reply_to(message, "❌ تعذر جلب بيانات هذا الأصل حالياً، يرجى المحاولة لاحقاً.")
+            return
+
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        
+        rs = gain / loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        last_rsi = round(df['RSI'].iloc[-1], 2)
+        last_price = round(df['Close'].iloc[-1], 4)
+        
+        if last_rsi >= 70:
+            signal = "🔴 **إشارة بيع (Overbought)** - السوق في منطقة تشبع شرائي."
+        elif last_rsi <= 30:
+            signal = "🟢 **إشارة شراء (Oversold)** - السوق في منطقة تشبع بيعي."
+        else:
+            signal = "⚪ **حالة محايدة (Neutral)** - لا توجد إشارة واضحة حالياً."
+            
+        response_text = (
+            f"📊 **نتيجة تحليل {asset_name}:**\n\n"
+            f"💵 السعر الحالي: `{last_price}`\n"
+            f"📈 قيمة RSI (14): `{last_rsi}`\n\n"
+            f"🎯 **التوصية:**\n{signal}"
+        )
+        
+        bot.send_message(message.chat.id, response_text, parse_mode="Markdown")
+
     except Exception as e:
-        bot.send_message(message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
+        bot.reply_to(message, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
+
+# 5. تشغيل البوت (السطر 540 وما بعده)
+if __name__ == "__main__":
+    print("Bot is running...")
+    bot.infinity_polling(timeout=60, long_polling_timeout=1)
+    
 
 # 5. تشغيل البوت
 if __name__ == "__main__":
