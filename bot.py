@@ -515,6 +515,13 @@ def analyze_asset(ticker_symbol):
 
 
 # 4. أوامر البوت
+@bot.message_handler(commands=['start', 'menu'])
+def send_welcome(message):
+    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    buttons = [KeyboardButton(text) for text in ASSETS.keys()]
+    markup.add(*buttons)
+    bot.reply_to(message, "📋 اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
+
 @bot.message_handler(func=lambda message: message.text in ASSETS)
 def handle_asset_selection(message):
     try:
@@ -525,8 +532,6 @@ def handle_asset_selection(message):
         bot.send_message(message.chat.id, result, parse_mode="Markdown")
     except Exception as e:
         bot.send_message(message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
-        
-        
         
 
 @bot.message_handler(commands=['start', 'menu'])
