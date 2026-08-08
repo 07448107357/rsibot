@@ -72,9 +72,15 @@ def send_welcome(message):
 
 
 # 3. دالة التحليل
-# ---------------------------------------------------------
-# خريطة الرموز الشاملة (أزواج، أسهم، عملات رقمية)
-# ---------------------------------------------------------
+import telebot
+from telebot import types
+import yfinance as yf
+import pandas as pd
+
+# ضع توكن البوت الخاص بك هنا
+TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+bot = telebot.TeleBot(TOKEN)
+
 SYMBOL_MAP = {
     # Forex
     "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
@@ -85,7 +91,7 @@ SYMBOL_MAP = {
     "GBPAUD": "GBPAUD=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
     "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
     "CHFJPY": "CHFJPY=X",
-    # Commodities & Crypto
+    # Crypto & Commodities
     "XAUUSD": "GC=F", "XAGUSD": "SI=F", "OIL": "CL=F",
     "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
     "BNB": "BNB-USD", "XRP": "XRP-USD",
@@ -95,9 +101,6 @@ SYMBOL_MAP = {
     "MCD": "MCD", "BA": "BA", "INTC": "INTC"
 }
 
-# ---------------------------------------------------------
-# دالة التحليل المحدثة
-# ---------------------------------------------------------
 def analyze_asset(ticker, interval="1m"):
     try:
         expiry_map = {
@@ -111,7 +114,7 @@ def analyze_asset(ticker, interval="1m"):
         df = yf.download(tickers=ticker, period=period, interval=interval, progress=False)
         
         if df.empty or len(df) < 20:
-            return f"⚠️ البيانات غير متوفرة حالياً للرمز {ticker} (قد يكون السوق مغلقاً)."
+            return f"⚠️ البيانات غير متوفرة حالياً للرمز {ticker}."
 
         if isinstance(df.columns, pd.MultiIndex):
             close = df['Close'][ticker].dropna()
@@ -125,7 +128,6 @@ def analyze_asset(ticker, interval="1m"):
         if len(close) < 20:
             return f"⚠️ عدد الشموع المتاحة غير كافٍ لتحليل {ticker}."
 
-        # RSI
         delta = close.diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
@@ -134,13 +136,11 @@ def analyze_asset(ticker, interval="1m"):
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
 
-        # Stochastic
         low_min = low.rolling(window=14).min()
         high_max = high.rolling(window=14).max()
         stoch_k = 100 * ((close - low_min) / (high_max - low_min))
         stoch_d = stoch_k.rolling(window=3).mean()
 
-        # Moving Averages
         sma20 = close.rolling(window=20).mean()
         ema200 = close.ewm(span=200, adjust=False).mean()
 
@@ -182,9 +182,16 @@ def analyze_asset(ticker, interval="1m"):
     except Exception as e:
         return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
 
-# ---------------------------------------------------------
-# دالة معالجة نقرات الأزرار
-# ---------------------------------------------------------
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    btn1 = types.KeyboardButton("EURUSD")
+    btn2 = types.KeyboardButton("GBPUSD")
+    btn3 = types.KeyboardButton("BTC")
+    btn4 = types.KeyboardButton("XAUUSD")
+    markup.add(btn1, btn2, btn3, btn4)
+    bot.send_message(message.chat.id, "مرحباً بك! اختر الزوج لبدء التحليل:", reply_markup=markup)
+
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     if not call.message:
@@ -193,14 +200,11 @@ def callback_inline(call):
     data = call.data
     bot.answer_callback_query(call.id, text="جاري المعالجة... ⏳")
 
-    # 1. إذا تم اختيار أصول بها إطار زمني محدد (مثل EURUSD|5m)
     if "|" in data:
         asset, interval = data.split("|")
         ticker = SYMBOL_MAP.get(asset, asset)
         result = analyze_asset(ticker=ticker, interval=interval)
         bot.send_message(call.message.chat.id, result)
-
-    # 2. إذا تم اختيار اسم الأصل فقط (إظهار أزرار اختيار الفريم)
     else:
         asset_key = data
         ticker = SYMBOL_MAP.get(asset_key, asset_key)
@@ -217,6 +221,27 @@ def callback_inline(call):
             reply_markup=markup,
             parse_mode="Markdown"
         )
+
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    text = message.text.upper().strip()
+    ticker = SYMBOL_MAP.get(text, text)
+    
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    btn_1m = types.InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"{text}|1m")
+    btn_5m = types.InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"{text}|5m")
+    btn_15m = types.InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"{text}|15m")
+    markup.add(btn_1m, btn_5m, btn_15m)
+
+    bot.send_message(
+        message.chat.id, 
+        f"اختر الإطار الزمني لتحليل **{text}**:", 
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+
+bot.infinity_polling()
+
         
             
             
