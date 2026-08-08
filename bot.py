@@ -622,6 +622,7 @@ def send_welcome(message):
     
     # إرسال الرسالة مع الأزرار
     bot.send_message(message.chat.id, "اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
+    
 
 # تشغيل البوت
 if __name__ == "__main__":
