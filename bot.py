@@ -73,39 +73,59 @@ def send_welcome(message):
 
 # 3. دالة التحليل
 # ---------------------------------------------------------
-# دالة التحليل مع إضافة زمن الصفقة وحل مشكلة إغلاق السوق
+# خريطة الرموز الشاملة (أزواج، أسهم، عملات رقمية)
+# ---------------------------------------------------------
+SYMBOL_MAP = {
+    # Forex
+    "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
+    "USDCAD": "CAD=X", "USDCHF": "CHF=X", "AUDUSD": "AUDUSD=X",
+    "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
+    "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURCHF": "EURCHF=X",
+    "EURAUD": "EURAUD=X", "GBPCAD": "GBPCAD=X", "GBPCHF": "GBPCHF=X",
+    "GBPAUD": "GBPAUD=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
+    "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
+    "CHFJPY": "CHFJPY=X",
+    # Commodities & Crypto
+    "XAUUSD": "GC=F", "XAGUSD": "SI=F", "OIL": "CL=F",
+    "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
+    "BNB": "BNB-USD", "XRP": "XRP-USD",
+    # Stocks
+    "AAPL": "AAPL", "MSFT": "MSFT", "GOOGL": "GOOGL",
+    "AMZN": "AMZN", "TSLA": "TSLA", "META": "META",
+    "MCD": "MCD", "BA": "BA", "INTC": "INTC"
+}
+
+# ---------------------------------------------------------
+# دالة التحليل المحدثة
 # ---------------------------------------------------------
 def analyze_asset(ticker, interval="1m"):
     try:
-        # تحديد زمن الصفقة بناءً على الفريم
         expiry_map = {
-            "1m": "دقيقة واحدة (1 Minute)",
-            "5m": "5 دقائق (5 Minutes)",
-            "15m": "15 دقيقة (15 Minutes)"
+            "1m": "دقيقة واحدة (1m)",
+            "5m": "5 دقائق (5m)",
+            "15m": "15 دقيقة (15m)"
         }
         trade_duration = expiry_map.get(interval, "دقيقة واحدة")
 
-        # جلب البيانات
         period = "5d" if interval in ["1m", "5m"] else "1mo"
         df = yf.download(tickers=ticker, period=period, interval=interval, progress=False)
         
         if df.empty or len(df) < 20:
-            return f"⚠️ السوق مغلق حالياً أو لا تتوفر بيانات كافية للرمز {ticker}."
+            return f"⚠️ البيانات غير متوفرة حالياً للرمز {ticker} (قد يكون السوق مغلقاً)."
 
         if isinstance(df.columns, pd.MultiIndex):
-            close = df['Close'][ticker]
-            high = df['High'][ticker]
-            low = df['Low'][ticker]
+            close = df['Close'][ticker].dropna()
+            high = df['High'][ticker].dropna()
+            low = df['Low'][ticker].dropna()
         else:
-            close = df['Close']
-            high = df['High']
-            low = df['Low']
+            close = df['Close'].dropna()
+            high = df['High'].dropna()
+            low = df['Low'].dropna()
 
-        close = close.dropna()
-        high = high.dropna()
-        low = low.dropna()
+        if len(close) < 20:
+            return f"⚠️ عدد الشموع المتاحة غير كافٍ لتحليل {ticker}."
 
-        # حساب RSI
+        # RSI
         delta = close.diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
@@ -114,13 +134,13 @@ def analyze_asset(ticker, interval="1m"):
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
 
-        # حساب Stochastic
+        # Stochastic
         low_min = low.rolling(window=14).min()
         high_max = high.rolling(window=14).max()
         stoch_k = 100 * ((close - low_min) / (high_max - low_min))
         stoch_d = stoch_k.rolling(window=3).mean()
 
-        # حساب MAs
+        # Moving Averages
         sma20 = close.rolling(window=20).mean()
         ema200 = close.ewm(span=200, adjust=False).mean()
 
@@ -131,7 +151,6 @@ def analyze_asset(ticker, interval="1m"):
         last_sma = float(sma20.fillna(last_price).iloc[-1])
         last_ema = float(ema200.fillna(last_price).iloc[-1])
 
-        # تحديد التوصية
         if last_rsi < 35 and last_k < 20:
             signal = "🟢 توصية: شراء قوية (CALL)"
         elif last_rsi > 65 and last_k > 80:
@@ -163,38 +182,42 @@ def analyze_asset(ticker, interval="1m"):
     except Exception as e:
         return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
 
-
 # ---------------------------------------------------------
-# دالة معالجة الأزرار
+# دالة معالجة نقرات الأزرار
 # ---------------------------------------------------------
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
-    if call.message:
-        data = call.data
-        bot.answer_callback_query(call.id, text="جاري تحليل السوق... ⏳")
+    if not call.message:
+        return
+        
+    data = call.data
+    bot.answer_callback_query(call.id, text="جاري المعالجة... ⏳")
 
-        symbol_map = {
-            "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
-            "USDCAD": "CAD=X", "USDCHF": "CHF=X", "AUDUSD": "AUDUSD=X",
-            "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
-            "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURCHF": "EURCHF=X",
-            "EURAUD": "EURAUD=X", "GBPCAD": "GBPCAD=X", "GBPCHF": "GBPCHF=X",
-            "GBPAUD": "GBPAUD=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
-            "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
-            "CHFJPY": "CHFJPY=X", "XAUUSD": "GC=F", "XAGUSD": "SI=F",
-            "BTC": "BTC-USD", "ETH": "ETH-USD"
-        }
+    # 1. إذا تم اختيار أصول بها إطار زمني محدد (مثل EURUSD|5m)
+    if "|" in data:
+        asset, interval = data.split("|")
+        ticker = SYMBOL_MAP.get(asset, asset)
+        result = analyze_asset(ticker=ticker, interval=interval)
+        bot.send_message(call.message.chat.id, result)
 
-        if "|" in data:
-            asset, interval = data.split("|")
-            ticker = symbol_map.get(asset, asset)
-            result = analyze_asset(ticker=ticker, interval=interval)
-            bot.send_message(call.message.chat.id, result)
-            
-        elif data in symbol_map or "=X" in data or "-USD" in data:
-            ticker = symbol_map.get(data, data)
-            result = analyze_asset(ticker=ticker, interval="1m")
-            bot.send_message(call.message.chat.id, result)
+    # 2. إذا تم اختيار اسم الأصل فقط (إظهار أزرار اختيار الفريم)
+    else:
+        asset_key = data
+        ticker = SYMBOL_MAP.get(asset_key, asset_key)
+        
+        markup = types.InlineKeyboardMarkup(row_width=3)
+        btn_1m = types.InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"{asset_key}|1m")
+        btn_5m = types.InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"{asset_key}|5m")
+        btn_15m = types.InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"{asset_key}|15m")
+        markup.add(btn_1m, btn_5m, btn_15m)
+
+        bot.send_message(
+            call.message.chat.id, 
+            f"اختر الإطار الزمني لتحليل **{asset_key}**:", 
+            reply_markup=markup,
+            parse_mode="Markdown"
+        )
+        
             
             
         
