@@ -72,452 +72,81 @@ def send_welcome(message):
 
 
 # 3. دالة التحليل
-def analyze_asset(ticker_symbol):
+def analyze_asset(ticker, interval="1m"):
     try:
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
+        # تحديد فترة جلب البيانات بناءً على الفريم الزمني
+        period = "1d" if interval in ["1m", "5m", "15m"] else "5d"
         
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
+        # جلب البيانات
+        df = yf.download(tickers=ticker, period=period, interval=interval, progress=False)
+        
+        if df.empty or len(df) < 14:
+            return f"⚠️ البيانات غير كافية لتحليل الرمز {ticker} على فريم {interval}."
 
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # منطق تحديد التوصية
-        if last_rsi < 45 and last_k < 45:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(اتجاه هابط قادم للارتداد)*"
-        elif last_rsi > 55 and last_k > 55:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(اتجاه صاعد قادم للهبوط)*"
-        elif last_rsi <= 50:
-            signal = "🟢 **توصية: شراء خفيف**"
+        # معالجة تنسيق البيانات من yfinance
+        if isinstance(df.columns, pd.MultiIndex):
+            close = df['Close'][ticker]
+            high = df['High'][ticker]
+            low = df['Low'][ticker]
         else:
-            signal = "🔴 **توصية: بيع خفيف**"
+            close = df['Close']
+            high = df['High']
+            low = df['Low']
 
-        # صياغة رسالة التحليل وتضمين الرمز
-        analysis = (
-            f"📌 **الرمز / Asset:** `{ticker_symbol}`\n\n"
-            f"📊 **تحليل السعر والمؤشرات:**\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n\n"
-            f"🎯 **القرار:**\n{signal}"
+        current_price = float(close.iloc[-1])
+
+        # 1. حساب مؤشر RSI (14)
+        delta = close.diff()
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        avg_gain = gain.rolling(window=14).mean()
+        avg_loss = loss.rolling(window=14).mean()
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        current_rsi = float(rsi.iloc[-1])
+
+        # 2. حساب مؤشر Stochastic (14, 3, 3)
+        low_14 = low.rolling(window=14).min()
+        high_14 = high.rolling(window=14).max()
+        stoch_k = 100 * ((close - low_14) / (high_14 - low_14))
+        stoch_d = stoch_k.rolling(window=3).mean()
+        current_k = float(stoch_k.iloc[-1])
+        current_d = float(stoch_d.iloc[-1])
+
+        # 3. حساب المتوسطات المتحركة SMA 20 & EMA 200
+        sma_20 = float(close.rolling(window=20).mean().iloc[-1]) if len(close) >= 20 else current_price
+        ema_200 = float(close.ewm(span=200, adjust=False).mean().iloc[-1]) if len(close) >= 200 else current_price
+
+        # اتخاذ القرار الإشاري
+        if current_rsi < 30 and current_k < 20:
+            decision = "🟢 توصية: شراء (CALL)\n(تشبع بيعي - صعود متوقع)"
+        elif current_rsi > 70 and current_k > 80:
+            decision = "🔴 توصية: بيع (PUT)\n(تشبع شرائي - هبوط متوقع)"
+        elif current_price > sma_20:
+            decision = "🟢 توصية: شراء (CALL)\n(اتجاه صاعد)"
+        else:
+            decision = "🔴 توصية: بيع (PUT)\n(اتجاه هابط)"
+
+        # صياغة النتيجة
+        response = (
+            f"📌 الرمز / Asset: {ticker}\n"
+            f"⏱️ الإطار الزمني: {interval}\n\n"
+            f"📊 تحليل السعر والمؤشرات:\n"
+            f"💵 السعر الحالي: {current_price:.4f}\n"
+            f"📈 RSI (14): {current_rsi:.2f}\n"
+            f"📉 Stochastic (%K / %D): {current_k:.2f} / {current_d:.2f}\n"
+            f"📊 SMA 20: {sma_20:.4f}\n"
+            f"📊 EMA 200: {ema_200:.4f}\n\n"
+            f"🎯 القرار:\n{decision}"
         )
-        return analysis
+        return response
 
     except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
+        return f"⚠️ حدث خطأ أثناء تحليل الرمز {ticker}: {str(e)}"
         
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # منطق تحديد التوصية
-        if last_rsi < 45 and last_k < 45:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(اتجاه هابط قادم للارتداد)*"
-        elif last_rsi > 55 and last_k > 55:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(اتجاه صاعد قادم للهبوط)*"
-        elif last_rsi <= 50:
-            signal = "🟢 **توصية: شراء خفيف**"
-        else:
-            signal = "🔴 **توصية: بيع خفيف**"
-
-        # صياغة رسالة التحليل مع إظهار اسم الأصل والرمز
-        analysis = (
-            f"📌 **الزوج / الأصل:** {asset_name} (`{ticker_symbol}`)\n\n"
-            f"📊 **تحليل السعر والمؤشرات:**\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n\n"
-            f"🎯 **القرار:**\n{signal}"
-        )
-        return analysis
-
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
-        
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # منطق تحديد التوصية بصورة مرنة
-        if last_rsi < 45 and last_k < 45:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(اتجاه هابط قادم للارتداد)*"
-        elif last_rsi > 55 and last_k > 55:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(اتجاه صاعد قادم للهبوط)*"
-        elif last_rsi <= 50:
-            signal = "🟢 **توصية: شراء خفيف**"
-        else:
-            signal = "🔴 **توصية: بيع خفيف**"
-
-        # صياغة رسالة التحليل مع إضافة اسم الأصل/الزوج
-        analysis = (
-            f"📌 **الزوج / الأصل:** `{ticker_symbol}`\n\n"
-            f"📊 **تحليل السعر والمؤشرات:**\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n\n"
-            f"🎯 **القرار:**\n{signal}"
-        )
-        return analysis
-
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
-        
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # منطق تحديد التوصية بصورة مرنة
-        if last_rsi < 35 and last_k < 20:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(تشبع بيعي قوي)*"
-        elif last_rsi > 65 and last_k > 80 and last_k < last_d:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(تأكيد بداية الارتداد للهبوط)*"
-        elif last_rsi <= 48:
-            signal = "🟢 **توصية: شراء خفيف**"
-        elif last_rsi >= 52:
-            signal = "🔴 **توصية: بيع خفيف**"
-        else:
-            signal = "⚪ **حالة حيادية: انتظار**"
             
 
-        # صياغة رسالة التحليل
-        analysis = (
-            f"📊 **تحليل السعر والمؤشرات:**\n\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n\n"
-            f"🎯 **القرار:**\n{signal}"
-        )
-        return analysis
 
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
-        
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # منطق تحديد التوصية بصورة مرنة
-        if last_rsi < 45 and last_k < 45:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(اتجاه هابط قادم للارتداد)*"
-        elif last_rsi > 55 and last_k > 55:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(اتجاه صاعد قادم للهبوط)*"
-        elif last_rsi <= 50:
-            signal = "🟢 **توصية: شراء خفيف**"
-        else:
-            signal = "🔴 **توصية: بيع خفيف**"
-
-        # صياغة رسالة التحليل
-        analysis = (
-            f"📊 **تحليل السعر والمؤشرات:**\n\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n\n"
-            f"🎯 **القرار:**\n{signal}"
-        )
-        return analysis
-
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
-        
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # منطق تحديد التوصية التلقائية
-        signal = "⚪ **انتظار (لا توجد إشارة قوية)**"
-        
-        if last_rsi < 35 and last_k < 25 and last_price > last_ema:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(تشبع بيعي + اتجاه صاعد)*"
-        elif last_rsi > 65 and last_k > 75 and last_price < last_ema:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(تشبع شرائي + اتجاه هابط)*"
-        elif last_rsi < 30:
-            signal = "🟢 **توصية: شراء قريبة (مراقبة)**"
-        elif last_rsi > 70:
-            signal = "🔴 **توصية: بيع قريبة (مراقبة)**"
-
-        # صياغة رسالة التحليل
-        analysis = (
-            f"📊 **تحليل السعر والمؤشرات:**\n\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n\n"
-            f"🎯 **القرار:**\n{signal}"
-        )
-        return analysis
-
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
-        
-        # جلب البيانات بفاصل 5 دقائق
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-
-        # حساب المؤشرات
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        # حساب Stochastic
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        # حساب RSI
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        # استخراج آخر القيم باستخدام .item() لمنع خطأ Series
-        last_price = float(df['Close'].iloc[-1].item())
-        last_rsi = float(df['RSI'].iloc[-1].item())
-        last_k = float(df['%K'].iloc[-1].item())
-        last_d = float(df['%D'].iloc[-1].item())
-        last_sma = float(df['SMA20'].iloc[-1].item())
-        last_ema = float(df['EMA200'].iloc[-1].item())
-
-        # صياغة رسالة التحليل
-        analysis = (
-            f"📊 **تحليل السعر والمؤشرات:**\n\n"
-            f"💵 **السعر الحالي:** `{last_price:.4f}`\n"
-            f"📈 **RSI (14):** `{last_rsi:.2f}`\n"
-            f"📉 **Stochastic (%K / %D):** `{last_k:.2f}` / `{last_d:.2f}`\n"
-            f"📊 **SMA 20:** `{last_sma:.4f}`\n"
-            f"📊 **EMA 200:** `{last_ema:.4f}`\n"
-        )
-        return analysis
-
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
-        
-                # جلب البيانات مباشرة لمتغير df
-        df = yf.download(tickers=ticker_symbol, period="5d", interval="5m")
-        
-        if df.empty or len(df) < 20:
-            return "❌ لا توجد بيانات كافية للتحليل حالياً."
-            
-
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['EMA200'] = df['Close'].ewm(span=200, adjust=False).mean()
-
-        low_min = df['Low'].rolling(window=14).min()
-        high_max = df['High'].rolling(window=14).max()
-        df['%K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-        df['%D'] = df['%K'].rolling(window=3).mean()
-
-        delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['RSI'] = 100 - (100 / (1 + rs))
-
-        price = round(float(df['Close'].iloc[-1]), 4)
-        sma = float(df['SMA20'].iloc[-1])
-        ema200 = float(df['EMA200'].iloc[-1])
-        stoch_k = round(float(df['%K'].iloc[-1]), 2)
-        stoch_d = round(float(df['%D'].iloc[-1]), 2)
-        rsi = round(float(df['RSI'].iloc[-1]), 2)
-
-        if price > ema200 and price > sma:
-            direction = "🟢 صاعد قوي ⬆️"
-        elif price < ema200 and price < sma:
-            direction = "🔴 هابط قوي ⬇️"
-        else:
-            direction = "🟡 عرضي / متذبذب 🔄"
-
-        if price > ema200 and rsi < 40 and stoch_k < 30:
-            signal = "🟢 **توصية شراء قوية (BUY 🟢)**"
-        elif price < ema200 and rsi > 60 and stoch_k > 70:
-            signal = "🔴 **توصية بيع قوية (SELL 🔴)**"
-        else:
-            signal = "⚪ **انتظار / لا توجد فرصة واضحة**"
-
-        return (
-            f"📊 **تحليل الأصل:** `{ticker_symbol}`\n"
-            f"━━━━━━━━━━━━━━━━━━\n"
-            f"💵 **السعر الحالي:** `${price}`\n"
-            f"📈 **الاتجاه العام:** {direction}\n"
-            f"🎯 **الإشارة:** {signal}\n\n"
-            f"🔹 **مؤشر RSI:** `{rsi}`\n"
-            f"🔹 **Stochastic %K:** `{stoch_k}`\n"
-            f"🔹 **Stochastic %D:** `{stoch_d}`\n"
-            f"━━━━━━━━━━━━━━━━━━"
-        )
-    except Exception as e:
-        return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
 
 
 # 4. أوامر البوت
