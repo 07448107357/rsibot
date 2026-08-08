@@ -628,11 +628,7 @@ if __name__ == "__main__":
     bot.infinity_polling(timeout=60, long_polling_timeout=1)
     
 
-# 5. تشغيل البوت
-if __name__ == "__main__":
-    print("Bot is running...")
-    bot.infinity_polling(timeout=60, long_polling_timeout=60)
-    
+
     
     
     
