@@ -9,26 +9,58 @@ bot = telebot.TeleBot(TOKEN)
 
 
 # 2. قائمة الأصول
+# قاموس شامل بجميع العملات والأصول المتاحة
 ASSETS = {
+    # 💵 أزواج العملات الرئيسية والتصاعدية (Forex)
     "EUR/USD 🇪🇺🇺🇸": "EURUSD=X",
     "GBP/USD 🇬🇧🇺🇸": "GBPUSD=X",
     "USD/JPY 🇺🇸🇯🇵": "JPY=X",
-    "AUD/USD 🇦🇺🇺🇸": "AUDUSD=X",
     "USD/CAD 🇺🇸🇨🇦": "CAD=X",
+    "AUD/USD 🇦🇺🇺🇸": "AUDUSD=X",
     "USD/CHF 🇺🇸🇨🇭": "CHF=X",
-    "الذهب (Gold) 🥇": "GC=F",
-    "الفضة (Silver) 🥈": "SI=F",
-    "بيتكوين (Bitcoin) ₿": "BTC-USD",
-    "إيثيريوم (Ethereum) 💎": "ETH-USD",
-    "Apple 🍎": "AAPL",
-    "Amazon 📦": "AMZN",
-    "McDonald's 🍔": "MCD",
-    "Meta (Facebook) 🌐": "META",
-    "Google 🔍": "GOOGL",
-    "Tesla ⚡": "TSLA",
+    "NZD/USD 🇳🇿🇺🇸": "NZDUSD=X",
+    "EUR/GBP 🇪🇺🇬🇧": "EURGBP=X",
+    "EUR/JPY 🇪🇺🇯🇵": "EURJPY=X",
+    "GBP/JPY 🇬🇧🇯🇵": "GBPJPY=X",
+    "EUR/CAD 🇪🇺🇨🇦": "EURCAD=X",
+    "EUR/AUD 🇪🇺🇦🇺": "EURAUD=X",
+    "EUR/CHF 🇪🇺🇨🇭": "EURCHF=X",
+    "GBP/CAD 🇬🇧🇨🇦": "GBPCAD=X",
+    "GBP/AUD 🇬🇧🇦🇺": "GBPAUD=X",
+    "GBP/CHF 🇬🇧🇨🇭": "GBPCHF=X",
+    "AUD/CAD 🇦🇺🇨🇦": "AUDCAD=X",
+    "AUD/JPY 🇦🇺🇯🇵": "AUDJPY=X",
+    "AUD/NZD 🇦🇺🇳🇿": "AUDNZD=X",
+    "NZD/JPY 🇳🇿🇯🇵": "NZDJPY=X",
+    "CAD/JPY 🇨🇦🇯🇵": "CADJPY=X",
+    "CHF/JPY 🇨🇭🇯🇵": "CHFJPY=X",
+
+    # 🥇 المعادن والسلع
+    "الذهب Gold 🥇": "GC=F",
+    "الفضة Silver 🥈": "SI=F",
+    "النفط Crude Oil 🛢️": "CL=F",
+
+    # 🪙 العملات الرقمية (Crypto)
+    "Bitcoin ₿": "BTC-USD",
+    "Ethereum 💎": "ETH-USD",
+    "Solana 🟣": "SOL-USD",
+    "Binance Coin 🟡": "BNB-USD",
+    "XRP 🚀": "XRP-USD",
+
+    # 🏢 أسهم الشركات العالمية
+    "Apple 🍏": "AAPL",
     "Microsoft 💻": "MSFT",
+    "Google 🔍": "GOOGL",
+    "Amazon 📦": "AMZN",
+    "Tesla ⚡": "TSLA",
+    "Meta 🌐": "META",
+    "Nvidia 🟢": "NVDA",
+    "Netflix 🎬": "NFLX",
+    "McDonald's 🍔": "MCD",
     "Boeing ✈️": "BA",
-    "Intel 💻": "INTC"
+    "Intel 🖥️": "INTC"
+}
+
 }
 
 # 3. دالة التحليل
@@ -237,14 +269,17 @@ def analyze_asset(ticker_symbol):
         last_ema = float(df['EMA200'].iloc[-1].item())
 
         # منطق تحديد التوصية بصورة مرنة
-        if last_rsi < 45 and last_k < 45:
-            signal = "🟢 **توصية: شراء (CALL)** \n*(اتجاه هابط قادم للارتداد)*"
-        elif last_rsi > 55 and last_k > 55:
-            signal = "🔴 **توصية: بيع (PUT)** \n*(اتجاه صاعد قادم للهبوط)*"
-        elif last_rsi <= 50:
+                if last_rsi < 35 and last_k < 20:
+            signal = "🟢 **توصية: شراء (CALL)** \n*(تشبع بيعي قوي)*"
+        elif last_rsi > 65 and last_k > 80 and last_k < last_d:
+            signal = "🔴 **توصية: بيع (PUT)** \n*(تأكيد بداية الارتداد للهبوط)*"
+        elif last_rsi <= 48:
             signal = "🟢 **توصية: شراء خفيف**"
-        else:
+        elif last_rsi >= 52:
             signal = "🔴 **توصية: بيع خفيف**"
+        else:
+            signal = "⚪ **حالة حيادية: انتظار**"
+            
 
         # صياغة رسالة التحليل
         analysis = (
@@ -497,7 +532,20 @@ def handle_callback(call):
     bot.send_message(call.message.chat.id, result, parse_mode="Markdown")
     
 
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    buttons = [KeyboardButton(text) for text in ASSETS.keys()]
+    markup.add(*buttons)
+    
+    bot.reply_to(
+        message, 
+        "أهلاً بك! اختر الزوج أو الأصل الذي تريد تحليله من القائمة أدناه:", 
+        reply_markup=markup
+    )
+    
 # 5. تشغيل البوت في النهاية فقط
 if __name__ == "__main__":
     print("Bot is running...")
