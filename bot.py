@@ -630,12 +630,30 @@ def callback_inline(call):
         bot.answer_callback_query(call.id, text="جاري جلب البيانات والتحليل...")
         asset = call.data
         
-        symbol_map = {
-            "EURUSD": "EURUSD=X",
-            "GBPUSD": "GBPUSD=X",
-            "USDJPY": "USDJPY=X",
-            "XAUUSD": "GC=F"
-        }
+                symbol_map = {
+            # أزواج العملات
+            "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
+            "USDCAD": "CAD=X", "AUDUSD": "AUDUSD=X", "USDCHF": "CHF=X",
+            "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
+            "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURAUD": "EURAUD=X",
+            "EURCHF": "EURCHF=X", "GBPCAD": "GBPCAD=X", "GBPAUD": "GBPAUD=X",
+            "GBPCHF": "GBPCHF=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
+            "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
+            "CHFJPY": "CHFJPY=X",
+            
+            # المعادن والسلع
+            "XAUUSD": "GC=F", "XAGUSD": "SI=F", "CL": "CL=F",
+            
+            # العملات الرقمية
+            "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
+            "BNB": "BNB-USD", "XRP": "XRP-USD",
+            
+            # الأسهم العالمية
+            "AAPL": "AAPL", "MSFT": "MSFT", "GOOGL": "GOOGL",
+            "AMZN": "AMZN", "TSLA": "TSLA", "META": "META",
+            "MCD": "MCD", "BA": "BA", "INTC": "INTC"
+                }
+        
         ticker = symbol_map.get(asset, asset)
         
         try:
