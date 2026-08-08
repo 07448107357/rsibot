@@ -630,34 +630,55 @@ def send_welcome(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     if call.message:
-        bot.answer_callback_query(call.id, text="جاري جلب البيانات والتحليل...")
-        asset = call.data
+        data = call.data
         
-        symbol_map = {
-            # أزواج العملات
-            "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
-            "USDCAD": "CAD=X", "AUDUSD": "AUDUSD=X", "USDCHF": "CHF=X",
-            "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
-            "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURAUD": "EURAUD=X",
-            "EURCHF": "EURCHF=X", "GBPCAD": "GBPCAD=X", "GBPAUD": "GBPAUD=X",
-            "GBPCHF": "GBPCHF=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
-            "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
-            "CHFJPY": "CHFJPY=X",
+        # إذا كان الخيار يحتوي على الفريم الزمني (مثل: EURUSD|1m)
+        if "|" in data:
+            asset, interval = data.split("|")
+            bot.answer_callback_query(call.id, text=f"جاري التحليل لفريم {interval}...")
             
-            # المعادن والسلع
-            "XAUUSD": "GC=F", "XAGUSD": "SI=F", "CL": "CL=F",
+            symbol_map = {
+                # أزواج العملات
+                "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
+                "USDCAD": "CAD=X", "AUDUSD": "AUDUSD=X", "USDCHF": "CHF=X",
+                "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
+                "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURAUD": "EURAUD=X",
+                "EURCHF": "EURCHF=X", "GBPCAD": "GBPCAD=X", "GBPAUD": "GBPAUD=X",
+                "GBPCHF": "GBPCHF=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
+                "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
+                "CHFJPY": "CHFJPY=X",
+                
+                # المعادن والسلع
+                "XAUUSD": "GC=F", "XAGUSD": "SI=F", "CL": "CL=F",
+                
+                # العملات الرقمية
+                "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
+                "BNB": "BNB-USD", "XRP": "XRP-USD",
+                
+                # الأسهم العالمية
+                "AAPL": "AAPL", "MSFT": "MSFT", "GOOGL": "GOOGL",
+                "AMZN": "AMZN", "TSLA": "TSLA", "META": "META",
+                "MCD": "MCD", "BA": "BA", "INTC": "INTC"
+            }
             
-            # العملات الرقمية
-            "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
-            "BNB": "BNB-USD", "XRP": "XRP-USD",
+            ticker = symbol_map.get(asset, asset)
             
-            # الأسهم العالمية
-            "AAPL": "AAPL", "MSFT": "MSFT", "GOOGL": "GOOGL",
-            "AMZN": "AMZN", "TSLA": "TSLA", "META": "META",
-            "MCD": "MCD", "BA": "BA", "INTC": "INTC"
-                }
-        
-        ticker = symbol_map.get(asset, asset)
+            try:
+                response_text = analyze_asset(ticker, interval=interval)
+                bot.send_message(call.message.chat.id, response_text)
+            except Exception as e:
+                bot.send_message(call.message.chat.id, f"حدث خطأ أثناء التحليل: {e}")
+
+        # إذا قام المستخدم باختيار الزوج فقط، نعرض له أزرار الفريمات الزمنية
+        else:
+            markup = telebot.types.InlineKeyboardMarkup(row_width=3)
+            btn1 = telebot.types.InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"{data}|1m")
+            btn2 = telebot.types.InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"{data}|5m")
+            btn3 = telebot.types.InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"{data}|15m")
+            markup.add(btn1, btn2, btn3)
+            
+            bot.send_message(call.message.chat.id, f"اختر الإطار الزمني لـ {data}:", reply_markup=markup)
+            
         
         try:
             response_text = analyze_asset(ticker)
