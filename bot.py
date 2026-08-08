@@ -534,7 +534,7 @@ def handle_callback(call):
 
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     buttons = [KeyboardButton(text) for text in ASSETS.keys()]
@@ -542,9 +542,10 @@ def send_welcome(message):
     
     bot.reply_to(
         message, 
-        "أهلاً بك! اختر الزوج أو الأصل الذي تريد تحليله من القائمة أدناه:", 
+        "📋 اختر الأصل لتليله واستخرج الإشارة:", 
         reply_markup=markup
     )
+    
     
 # 5. تشغيل البوت في النهاية فقط
 if __name__ == "__main__":
