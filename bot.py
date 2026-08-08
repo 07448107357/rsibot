@@ -261,42 +261,30 @@ def callback_inline(call):
     if call.message:
         data = call.data
         
-        # إذا كان الخيار يحتوي على الفريم الزمني (مثل: EURUSD|1m)
         if "|" in data:
             asset, interval = data.split("|")
-            bot.answer_callback_query(call.id, text=f"جاري التحليل لفريم {interval}...")
+            bot.answer_callback_query(call.id, text=f"جاري تحليل {asset}...")
             
             symbol_map = {
-                # أزواج العملات
                 "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
-                "USDCAD": "CAD=X", "AUDUSD": "AUDUSD=X", "USDCHF": "CHF=X",
+                "USDCAD": "CAD=X", "USDCHF": "CHF=X", "AUDUSD": "AUDUSD=X",
                 "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
-                "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURAUD": "EURAUD=X",
-                "EURCHF": "EURCHF=X", "GBPCAD": "GBPCAD=X", "GBPAUD": "GBPAUD=X",
-                "GBPCHF": "GBPCHF=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
+                "GBPJPY": "GBPJPY=X", "EURCAD": "EURCAD=X", "EURCHF": "EURCHF=X",
+                "EURAUD": "EURAUD=X", "GBPCAD": "GBPCAD=X", "GBPCHF": "GBPCHF=X",
+                "GBPAUD": "GBPAUD=X", "AUDCAD": "AUDCAD=X", "AUDJPY": "AUDJPY=X",
                 "AUDNZD": "AUDNZD=X", "NZDJPY": "NZDJPY=X", "CADJPY": "CADJPY=X",
-                "CHFJPY": "CHFJPY=X",
-                
-                # المعادن والسلع
-                "XAUUSD": "GC=F", "XAGUSD": "SI=F", "CL": "CL=F",
-                
-                # العملات الرقمية
-                "BTC": "BTC-USD", "ETH": "ETH-USD", "SOL": "SOL-USD",
-                "BNB": "BNB-USD", "XRP": "XRP-USD",
-                
-                # الأسهم العالمية
-                "AAPL": "AAPL", "MSFT": "MSFT", "GOOGL": "GOOGL",
-                "AMZN": "AMZN", "TSLA": "TSLA", "META": "META",
-                "MCD": "MCD", "BA": "BA", "INTC": "INTC"
+                "CHFJPY": "CHFJPY=X", "XAUUSD": "GC=F", "XAGUSD": "SI=F",
+                "BTC": "BTC-USD", "ETH": "ETH-USD"
             }
             
             ticker = symbol_map.get(asset, asset)
             
             try:
-                response_text = analyze_asset(ticker, interval=interval)
-                bot.send_message(call.message.chat.id, response_text)
+                result = analyze_asset(ticker=ticker, interval=interval)
+                bot.send_message(call.message.chat.id, result)
             except Exception as e:
-                bot.send_message(call.message.chat.id, f"حدث خطأ أثناء التحليل: {e}")
+                bot.send_message(call.message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
+                
 
         # إذا قام المستخدم باختيار الزوج فقط، نعرض له أزرار الفريمات الزمنية
         else:
