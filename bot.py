@@ -12,60 +12,63 @@ bot = telebot.TeleBot(TOKEN)
 
 
 
-# 2. قائمة الأصول
-# قاموس شامل بجميع العملات والأصول المتاحة
-ASSETS = {
-    # 💵 أزواج العملات الرئيسية والتصاعدية (Forex)
-    "EUR/USD 🇪🇺🇺🇸": "EURUSD=X",
-    "GBP/USD 🇬🇧🇺🇸": "GBPUSD=X",
-    "USD/JPY 🇺🇸🇯🇵": "JPY=X",
-    "USD/CAD 🇺🇸🇨🇦": "CAD=X",
-    "AUD/USD 🇦🇺🇺🇸": "AUDUSD=X",
-    "USD/CHF 🇺🇸🇨🇭": "CHF=X",
-    "NZD/USD 🇳🇿🇺🇸": "NZDUSD=X",
-    "EUR/GBP 🇪🇺🇬🇧": "EURGBP=X",
-    "EUR/JPY 🇪🇺🇯🇵": "EURJPY=X",
-    "GBP/JPY 🇬🇧🇯🇵": "GBPJPY=X",
-    "EUR/CAD 🇪🇺🇨🇦": "EURCAD=X",
-    "EUR/AUD 🇪🇺🇦🇺": "EURAUD=X",
-    "EUR/CHF 🇪🇺🇨🇭": "EURCHF=X",
-    "GBP/CAD 🇬🇧🇨🇦": "GBPCAD=X",
-    "GBP/AUD 🇬🇧🇦🇺": "GBPAUD=X",
-    "GBP/CHF 🇬🇧🇨🇭": "GBPCHF=X",
-    "AUD/CAD 🇦🇺🇨🇦": "AUDCAD=X",
-    "AUD/JPY 🇦🇺🇯🇵": "AUDJPY=X",
-    "AUD/NZD 🇦🇺🇳🇿": "AUDNZD=X",
-    "NZD/JPY 🇳🇿🇯🇵": "NZDJPY=X",
-    "CAD/JPY 🇨🇦🇯🇵": "CADJPY=X",
-    "CHF/JPY 🇨🇭🇯🇵": "CHFJPY=X",
-
-    # 🥇 المعادن والسلع
-    "الذهب Gold 🥇": "GC=F",
-    "الفضة Silver 🥈": "SI=F",
-    "النفط Crude Oil 🛢️": "CL=F",
-
-    # 🪙 العملات الرقمية (Crypto)
-    "Bitcoin ₿": "BTC-USD",
-    "Ethereum 💎": "ETH-USD",
-    "Solana 🟣": "SOL-USD",
-    "Binance Coin 🟡": "BNB-USD",
-    "XRP 🚀": "XRP-USD",
-
-    # 🏢 أسهم الشركات العالمية
-    "Apple 🍏": "AAPL",
-    "Microsoft 💻": "MSFT",
-    "Google 🔍": "GOOGL",
-    "Amazon 📦": "AMZN",
-    "Tesla ⚡": "TSLA",
-    "Meta 🌐": "META",
-    "Nvidia 🟢": "NVDA",
-    "Netflix 🎬": "NFLX",
-    "McDonald's 🍔": "MCD",
-    "Boeing ✈️": "BA",
-    "Intel 🖥️": "INTC"
-}
-
-
+@bot.message_handler(commands=['start', 'menu'])
+def send_welcome(message):
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    
+    # قائمة الأزرار
+    buttons = [
+        # العملات الرئيسية والفرعية
+        telebot.types.InlineKeyboardButton("EUR/USD 🇪🇺🇺🇸", callback_data="EURUSD"),
+        telebot.types.InlineKeyboardButton("GBP/USD 🇬🇧🇺🇸", callback_data="GBPUSD"),
+        telebot.types.InlineKeyboardButton("USD/JPY 🇺🇸🇯🇵", callback_data="USDJPY"),
+        telebot.types.InlineKeyboardButton("USD/CAD 🇺🇸🇨🇦", callback_data="USDCAD"),
+        telebot.types.InlineKeyboardButton("AUD/USD 🇦🇺🇺🇸", callback_data="AUDUSD"),
+        telebot.types.InlineKeyboardButton("USD/CHF 🇺🇸🇨🇭", callback_data="USDCHF"),
+        telebot.types.InlineKeyboardButton("NZD/USD 🇳🇿🇺🇸", callback_data="NZDUSD"),
+        telebot.types.InlineKeyboardButton("EUR/GBP 🇪🇺🇬🇧", callback_data="EURGBP"),
+        telebot.types.InlineKeyboardButton("EUR/JPY 🇪🇺🇯🇵", callback_data="EURJPY"),
+        telebot.types.InlineKeyboardButton("GBP/JPY 🇬🇧🇯🇵", callback_data="GBPJPY"),
+        telebot.types.InlineKeyboardButton("EUR/CAD 🇪🇺🇨🇦", callback_data="EURCAD"),
+        telebot.types.InlineKeyboardButton("EUR/AUD 🇪🇺🇦🇺", callback_data="EURAUD"),
+        telebot.types.InlineKeyboardButton("EUR/CHF 🇪🇺🇨🇭", callback_data="EURCHF"),
+        telebot.types.InlineKeyboardButton("GBP/CAD 🇬🇧🇨🇦", callback_data="GBPCAD"),
+        telebot.types.InlineKeyboardButton("GBP/AUD 🇬🇧🇦🇺", callback_data="GBPAUD"),
+        telebot.types.InlineKeyboardButton("GBP/CHF 🇬🇧🇨🇭", callback_data="GBPCHF"),
+        telebot.types.InlineKeyboardButton("AUD/CAD 🇦🇺🇨🇦", callback_data="AUDCAD"),
+        telebot.types.InlineKeyboardButton("AUD/JPY 🇦🇺🇯🇵", callback_data="AUDJPY"),
+        telebot.types.InlineKeyboardButton("AUD/NZD 🇦🇺🇳🇿", callback_data="AUDNZD"),
+        telebot.types.InlineKeyboardButton("NZD/JPY 🇳🇿🇯🇵", callback_data="NZDJPY"),
+        telebot.types.InlineKeyboardButton("CAD/JPY 🇨🇦🇯🇵", callback_data="CADJPY"),
+        telebot.types.InlineKeyboardButton("CHF/JPY 🇨🇭🇯🇵", callback_data="CHFJPY"),
+        
+        # المعادن والسلع
+        telebot.types.InlineKeyboardButton("الذهب (Gold) 🥇", callback_data="XAUUSD"),
+        telebot.types.InlineKeyboardButton("الفضة (Silver) 🥈", callback_data="XAGUSD"),
+        telebot.types.InlineKeyboardButton("النفط (Crude Oil) 🛢️", callback_data="CL"),
+        
+        # العملات الرقمية
+        telebot.types.InlineKeyboardButton("Bitcoin ₿", callback_data="BTC"),
+        telebot.types.InlineKeyboardButton("Ethereum 💎", callback_data="ETH"),
+        telebot.types.InlineKeyboardButton("Solana 🟣", callback_data="SOL"),
+        telebot.types.InlineKeyboardButton("Binance Coin 🟡", callback_data="BNB"),
+        telebot.types.InlineKeyboardButton("XRP 🚀", callback_data="XRP"),
+        
+        # الأسهم
+        telebot.types.InlineKeyboardButton("Apple 🍏", callback_data="AAPL"),
+        telebot.types.InlineKeyboardButton("Microsoft 💻", callback_data="MSFT"),
+        telebot.types.InlineKeyboardButton("Google 🔍", callback_data="GOOGL"),
+        telebot.types.InlineKeyboardButton("Amazon 📦", callback_data="AMZN"),
+        telebot.types.InlineKeyboardButton("Tesla ⚡", callback_data="TSLA"),
+        telebot.types.InlineKeyboardButton("Meta (Facebook) 🌐", callback_data="META"),
+        telebot.types.InlineKeyboardButton("McDonald's 🍔", callback_data="MCD"),
+        telebot.types.InlineKeyboardButton("Boeing ✈️", callback_data="BA"),
+        telebot.types.InlineKeyboardButton("Intel 🖥️", callback_data="INTC")
+    ]
+    
+    markup.add(*buttons)
+    bot.send_message(message.chat.id, "اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
+    
 
 
 # 3. دالة التحليل
