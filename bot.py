@@ -73,17 +73,25 @@ def send_welcome(message):
 
 # 3. دالة التحليل
 # ---------------------------------------------------------
-# دالة التحليل المعدلة مع حل مشكلة nan وفريم 1m
+# دالة التحليل مع إضافة زمن الصفقة وحل مشكلة إغلاق السوق
 # ---------------------------------------------------------
 def analyze_asset(ticker, interval="1m"):
     try:
-        # ضبط الفريم مع فترة جلب البيانات لتفادي nan
+        # تحديد زمن الصفقة بناءً على الفريم
+        expiry_map = {
+            "1m": "دقيقة واحدة (1 Minute)",
+            "5m": "5 دقائق (5 Minutes)",
+            "15m": "15 دقيقة (15 Minutes)"
+        }
+        trade_duration = expiry_map.get(interval, "دقيقة واحدة")
+
+        # جلب البيانات
         period = "5d" if interval in ["1m", "5m"] else "1mo"
         df = yf.download(tickers=ticker, period=period, interval=interval, progress=False)
         
         if df.empty or len(df) < 20:
-            return f"⚠️ تعذر جلب بيانات كافية للرمز {ticker} على فريم {interval}"
-            
+            return f"⚠️ السوق مغلق حالياً أو لا تتوفر بيانات كافية للرمز {ticker}."
+
         if isinstance(df.columns, pd.MultiIndex):
             close = df['Close'][ticker]
             high = df['High'][ticker]
@@ -93,13 +101,11 @@ def analyze_asset(ticker, interval="1m"):
             high = df['High']
             low = df['Low']
 
-        # تنظيف البيانات من أي قيم فارغة
         close = close.dropna()
         high = high.dropna()
         low = low.dropna()
 
-        # حساب المؤشرات
-        # RSI
+        # حساب RSI
         delta = close.diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)
@@ -108,31 +114,26 @@ def analyze_asset(ticker, interval="1m"):
         rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
 
-        # Stochastic
+        # حساب Stochastic
         low_min = low.rolling(window=14).min()
         high_max = high.rolling(window=14).max()
         stoch_k = 100 * ((close - low_min) / (high_max - low_min))
         stoch_d = stoch_k.rolling(window=3).mean()
 
-        # Moving Averages
+        # حساب MAs
         sma20 = close.rolling(window=20).mean()
         ema200 = close.ewm(span=200, adjust=False).mean()
 
-        # استخراج القيمة الأخيرة
         last_price = float(close.iloc[-1])
-        last_rsi = float(rsi.iloc[-1])
-        last_k = float(stoch_k.iloc[-1])
-        last_d = float(stoch_d.iloc[-1])
-        last_sma = float(sma20.iloc[-1])
-        last_ema = float(ema200.iloc[-1])
-
-        # التحقق من أن القيمة ليست nan
-        if pd.isna(last_rsi) or pd.isna(last_k):
-            return "⚠️ جاري تحديث البيانات من السوق، يرجى إعادة المحاولة بعد ثوانٍ."
+        last_rsi = float(rsi.fillna(50).iloc[-1])
+        last_k = float(stoch_k.fillna(50).iloc[-1])
+        last_d = float(stoch_d.fillna(50).iloc[-1])
+        last_sma = float(sma20.fillna(last_price).iloc[-1])
+        last_ema = float(ema200.fillna(last_price).iloc[-1])
 
         # تحديد التوصية
         if last_rsi < 35 and last_k < 20:
-            signal = "🔴 توصية: شراء قوية (CALL)"
+            signal = "🟢 توصية: شراء قوية (CALL)"
         elif last_rsi > 65 and last_k > 80:
             signal = "🔴 توصية: بيع قوية (PUT)"
         elif last_rsi < 45:
@@ -146,7 +147,8 @@ def analyze_asset(ticker, interval="1m"):
 
         return (
             f"📌 الرمز / Asset: {ticker}\n"
-            f"⏱️ الإطار الزمني: {interval}\n\n"
+            f"⏱️ الإطار الزمني: {interval}\n"
+            f"⏳ مدة الصفقة المقترحة: {trade_duration}\n\n"
             f"📊 تحليل السعر والمؤشرات:\n"
             f"💵 السعر الحالي: {last_price:.4f}\n"
             f"📈 RSI (14): {last_rsi:.2f}\n"
@@ -163,15 +165,13 @@ def analyze_asset(ticker, interval="1m"):
 
 
 # ---------------------------------------------------------
-# دالة الأزرار المعدلة لحل مشكلة ticker و التكرار
+# دالة معالجة الأزرار
 # ---------------------------------------------------------
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     if call.message:
         data = call.data
-        
-        # استجابة سريعة لمنع التكرار والنقر المزدوج
-        bot.answer_callback_query(call.id, text="جاري التحليل... ⏳")
+        bot.answer_callback_query(call.id, text="جاري تحليل السوق... ⏳")
 
         symbol_map = {
             "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
@@ -185,18 +185,17 @@ def callback_inline(call):
             "BTC": "BTC-USD", "ETH": "ETH-USD"
         }
 
-        # التعامل مع أزرار الفريمات الزمانية (مثال: EURUSD|1m)
         if "|" in data:
             asset, interval = data.split("|")
             ticker = symbol_map.get(asset, asset)
             result = analyze_asset(ticker=ticker, interval=interval)
             bot.send_message(call.message.chat.id, result)
             
-        # التعامل مع أزرار اختيار الأزواج الأساسية (إذا تم ضغط اسم الزوج مباشرة)
         elif data in symbol_map or "=X" in data or "-USD" in data:
             ticker = symbol_map.get(data, data)
             result = analyze_asset(ticker=ticker, interval="1m")
             bot.send_message(call.message.chat.id, result)
+            
             
         
             
