@@ -534,12 +534,29 @@ def handle_asset_selection(message):
         bot.send_message(message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
         
 
+# 4. أوامر البوت
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     buttons = [KeyboardButton(text) for text in ASSETS.keys()]
     markup.add(*buttons)
     bot.reply_to(message, "📋 اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
+
+@bot.message_handler(func=lambda message: message.text in ASSETS)
+def handle_asset_selection(message):
+    try:
+        asset_name = message.text
+        symbol = ASSETS[asset_name]
+        bot.reply_to(message, f"⏳ جاري تحليل `{asset_name}`...", parse_mode="Markdown")
+        result = analyze_asset(symbol)
+        bot.send_message(message.chat.id, result, parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
+
+# 5. تشغيل البوت في النهاية فقط
+if __name__ == "__main__":
+    print("Bot is running...")
+    bot.infinity_polling(timeout=60, long_polling_timeout=60)
     
     
     
