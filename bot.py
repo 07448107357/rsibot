@@ -270,7 +270,7 @@ def analyze_asset(ticker_symbol):
         last_ema = float(df['EMA200'].iloc[-1].item())
 
         # منطق تحديد التوصية بصورة مرنة
-                if last_rsi < 35 and last_k < 20:
+         if last_rsi < 35 and last_k < 20:
             signal = "🟢 **توصية: شراء (CALL)** \n*(تشبع بيعي قوي)*"
         elif last_rsi > 65 and last_k > 80 and last_k < last_d:
             signal = "🔴 **توصية: بيع (PUT)** \n*(تأكيد بداية الارتداد للهبوط)*"
