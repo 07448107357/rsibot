@@ -627,7 +627,23 @@ def send_welcome(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     if call.message:
-        bot.send_message(call.message.chat.id, f"جاري تحليل: {call.data} ... ⏳")
+        bot.answer_callback_query(call.id, text="جاري جلب البيانات والتحليل...")
+        asset = call.data
+        
+        symbol_map = {
+            "EURUSD": "EURUSD=X",
+            "GBPUSD": "GBPUSD=X",
+            "USDJPY": "USDJPY=X",
+            "XAUUSD": "GC=F"
+        }
+        ticker = symbol_map.get(asset, asset)
+        
+        try:
+            response_text = analyze_asset(ticker)
+            bot.send_message(call.message.chat.id, response_text, parse_mode="Markdown")
+        except Exception as e:
+            bot.send_message(call.message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {e}")
+            
         
 # تشغيل البوت
 if __name__ == "__main__":
