@@ -529,7 +529,7 @@ def handle_asset_selection(message):
         symbol = ASSETS[asset_name]
         bot.reply_to(message, f"⏳ جاري تحليل `{asset_name}`...", parse_mode="Markdown")
         result = analyze_asset(symbol)
-                bot.send_message(message.chat.id, result, parse_mode="Markdown")
+        bot.send_message(message.chat.id, result, parse_mode="Markdown")
         
     except Exception as e:
         bot.send_message(message.chat.id, f"⚠️ حدث خطأ أثناء التحليل: {str(e)}")
