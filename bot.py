@@ -61,7 +61,8 @@ ASSETS = {
     "Intel 🖥️": "INTC"
 }
 
-}
+
+
 
 # 3. دالة التحليل
 def analyze_asset(ticker_symbol):
