@@ -633,7 +633,7 @@ def callback_inline(call):
         bot.answer_callback_query(call.id, text="جاري جلب البيانات والتحليل...")
         asset = call.data
         
-                symbol_map = {
+        symbol_map = {
             # أزواج العملات
             "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
             "USDCAD": "CAD=X", "AUDUSD": "AUDUSD=X", "USDCHF": "CHF=X",
