@@ -624,7 +624,11 @@ def send_welcome(message):
     bot.send_message(message.chat.id, "اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
     
     
-
+@bot.callback_query_handler(func=lambda call: True)
+def callback_inline(call):
+    if call.message:
+        bot.send_message(call.message.chat.id, f"جاري تحليل: {call.data} ... ⏳")
+        
 # تشغيل البوت
 if __name__ == "__main__":
     print("Bot is running...")
