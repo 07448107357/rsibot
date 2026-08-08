@@ -512,24 +512,13 @@ def analyze_asset(ticker_symbol):
         return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
 
 # 4. أوامر البوت
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "👋 أهلاً بك! البوت جاهز لتحليل العملات والأسهم. أرسل /menu لعرض القائمة.")
-
-@bot.message_handler(commands=['menu'])
-def show_menu(message):
-    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
-    buttons = []
-    for name, symbol in ASSETS.items():
-        buttons.append(telebot.types.InlineKeyboardButton(text=name, callback_data=symbol))
-    markup.add(*buttons)
-    bot.reply_to(message, "📋 **اختر الأصل لتحليله واستخرج الإشارة:**", reply_markup=markup, parse_mode="Markdown")
-
-@bot.callback_query_handler(func=lambda call: True)
-def handle_callback(call):
-    bot.answer_callback_query(call.id, "جاري تحليل الأصل...")
-    result = analyze_asset(call.data)
-    bot.send_message(call.message.chat.id, result, parse_mode="Markdown")
+@bot.message_handler(func=lambda message: message.text in ASSETS)
+def handle_asset_selection(message):
+    symbol = ASSETS[message.text]
+    bot.reply_to(message, f"⏳ جاري تحليل `{message.text}`...")
+    result = analyze_asset(symbol)
+    bot.send_message(message.chat.id, result, parse_mode="Markdown")
+    
     
 
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
