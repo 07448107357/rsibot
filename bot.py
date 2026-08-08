@@ -620,6 +620,25 @@ def send_welcome(message):
     
     markup.add(btn1, btn2, btn3, btn4)
     
+    # إرسال الرسالة مع الأزرار
+    bot.send_message(message.chat.id, "اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
+
+# تشغيل البوت
+if __name__ == "__main__":
+    print("Bot is running...")
+    bot.infinity_polling(timeout=60, long_polling_timeout=1)
+    
+def send_welcome(message):
+    markup = telebot.types.InlineKeyboardMarkup(row_width=2)
+    
+    # قائمة الأزرار
+    btn1 = telebot.types.InlineKeyboardButton("EUR/USD 🇪🇺🇺🇸", callback_data="EURUSD")
+    btn2 = telebot.types.InlineKeyboardButton("GBP/USD 🇬🇧🇺🇸", callback_data="GBPUSD")
+    btn3 = telebot.types.InlineKeyboardButton("الذهب (Gold) 🥇", callback_data="XAUUSD")
+    btn4 = telebot.types.InlineKeyboardButton("USD/JPY 🇺🇸🇯🇵", callback_data="USDJPY")
+    
+    markup.add(btn1, btn2, btn3, btn4)
+    
     # أهم نقطة: إرفاق reply_markup=markup
     bot.send_message(message.chat.id, "اختر الأصل لتحليله واستخراج الإشارة:", reply_markup=markup)
     # 5. تشغيل البوت (السطر 540 وما بعده)
