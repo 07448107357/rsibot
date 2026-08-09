@@ -51,14 +51,17 @@ def remove_user(chat_id):
 
 def analyze_asset(ticker, interval="5m"):
     try:
-        df = yf.download(tickers=ticker, period="5d", interval=interval, progress=False)
-        if df.empty or len(df) < 50:
+        df = yf.download(tickers=ticker, period="5d", interval=interval, progress=False, multi_level_index=False)
+        if df.empty or len(df) < 20:
             return None
 
-        if isinstance(df.columns, pd.MultiIndex):
-            close = df['Close'][ticker].dropna()
-        else:
+        if 'Close' in df.columns:
             close = df['Close'].dropna()
+        else:
+            close = df.iloc[:, 3].dropna()
+
+        if len(close) < 20:
+            return None
 
         # 1. RSI
         delta = close.diff()
@@ -68,7 +71,8 @@ def analyze_asset(ticker, interval="5m"):
         rsi = 100 - (100 / (1 + rs))
 
         # 2. EMA 50
-        ema50 = close.ewm(span=50, adjust=False).mean()
+        span_val = 50 if len(close) >= 50 else len(close)
+        ema50 = close.ewm(span=span_val, adjust=False).mean()
 
         # 3. Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
@@ -79,10 +83,9 @@ def analyze_asset(ticker, interval="5m"):
         last_price = round(float(close.iloc[-1]), 4)
         last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
         last_ema = round(float(ema50.iloc[-1]), 4)
-        last_upper = round(float(upper_band.iloc[-1]), 4)
-        last_lower = round(float(lower_band.iloc[-1]), 4)
+        last_upper = round(float(upper_band.fillna(last_price).iloc[-1]), 4)
+        last_lower = round(float(lower_band.fillna(last_price).iloc[-1]), 4)
 
-        # تحديد موضع السعر بالنسبة لـ Bollinger Bands
         if last_price <= last_lower:
             bb_status = "📉 أسفل Bollinger Band (فرصة ارتداد صاعد)"
         elif last_price >= last_upper:
@@ -90,7 +93,6 @@ def analyze_asset(ticker, interval="5m"):
         else:
             bb_status = "↔️ داخل Bollinger Bands"
 
-        # الشروط المعززة بإضافة Bollinger Bands
         is_strong_buy = (last_rsi <= 30) and (last_price <= last_lower) and (last_price > last_ema)
         is_strong_sell = (last_rsi >= 70) and (last_price >= last_upper) and (last_price < last_ema)
 
@@ -106,8 +108,10 @@ def analyze_asset(ticker, interval="5m"):
             "is_strong_buy": is_strong_buy,
             "is_strong_sell": is_strong_sell
         }
-    except Exception:
+    except Exception as e:
+        print(f"Error: {e}")
         return None
+        
 
 def auto_scanner():
     while True:
