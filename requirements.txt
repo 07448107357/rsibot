@@ -1,6 +1,8 @@
-pyTelegramBotAPI
+python-telegram-bot>=20.0
 yfinance
 pandas
+numpy
+
 
 
 
