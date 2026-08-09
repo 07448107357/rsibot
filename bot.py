@@ -57,13 +57,17 @@ def analyze_asset(ticker, interval="5m"):
 
         if 'Close' in df.columns:
             close = df['Close'].dropna()
+            high = df['High'].dropna()
+            low = df['Low'].dropna()
         else:
             close = df.iloc[:, 3].dropna()
+            high = df.iloc[:, 1].dropna()
+            low = df.iloc[:, 2].dropna()
 
         if len(close) < 20:
             return None
 
-        # 1. RSI
+        # 1. RSI (14)
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -80,11 +84,27 @@ def analyze_asset(ticker, interval="5m"):
         upper_band = sma20 + (std20 * 2)
         lower_band = sma20 - (std20 * 2)
 
+        # 4. ATR لحساب SL / TP
+        tr1 = high - low
+        tr2 = abs(high - close.shift())
+        tr3 = abs(low - close.shift())
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        atr = tr.rolling(window=14).mean()
+
         last_price = round(float(close.iloc[-1]), 4)
         last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
         last_ema = round(float(ema50.iloc[-1]), 4)
         last_upper = round(float(upper_band.fillna(last_price).iloc[-1]), 4)
         last_lower = round(float(lower_band.fillna(last_price).iloc[-1]), 4)
+        last_atr = float(atr.fillna(0).iloc[-1])
+
+        if last_atr == 0:
+            last_atr = last_price * 0.0015
+
+        sl_buy = round(last_price - (last_atr * 1.5), 4)
+        tp_buy = round(last_price + (last_atr * 2.5), 4)
+        sl_sell = round(last_price + (last_atr * 1.5), 4)
+        tp_sell = round(last_price - (last_atr * 2.5), 4)
 
         if last_price <= last_lower:
             bb_status = "📉 أسفل Bollinger Band (فرصة ارتداد صاعد)"
@@ -103,15 +123,16 @@ def analyze_asset(ticker, interval="5m"):
             "rsi": last_rsi,
             "trend": trend,
             "bb_status": bb_status,
-            "upper_bb": last_upper,
-            "lower_bb": last_lower,
             "is_strong_buy": is_strong_buy,
-            "is_strong_sell": is_strong_sell
+            "is_strong_sell": is_strong_sell,
+            "sl_buy": sl_buy,
+            "tp_buy": tp_buy,
+            "sl_sell": sl_sell,
+            "tp_sell": tp_sell
         }
     except Exception as e:
         print(f"Error: {e}")
         return None
-        
 
 def auto_scanner():
     while True:
@@ -126,9 +147,23 @@ def auto_scanner():
                     if data:
                         alert_msg = None
                         if data["is_strong_buy"]:
-                            alert_msg = f"🚨 **تنبيه فرصة شراء قوية جداً!** 🟢🟢\n\nالزوج: **{name}**\nالسعر: `{data['price']}`\nRSI: `{data['rsi']}`\nBollinger: كسرت الحد السفلي\nالاتجاه: فوق EMA 50"
+                            alert_msg = (
+                                f"🚨 **تنبيه فرصة شراء قوية جداً!** 🟢🟢\n\n"
+                                f"الزوج: **{name}**\n"
+                                f"السعر: `{data['price']}`\n"
+                                f"RSI: `{data['rsi']}`\n"
+                                f"🛑 **SL:** `{data['sl_buy']}`\n"
+                                f"🎯 **TP:** `{data['tp_buy']}`"
+                            )
                         elif data["is_strong_sell"]:
-                            alert_msg = f"🚨 **تنبيه فرصة بيع قوية جداً!** 🔴🔴\n\nالزوج: **{name}**\nالسعر: `{data['price']}`\nRSI: `{data['rsi']}`\nBollinger: كسرت الحد العلوي\nالاتجاه: تحت EMA 50"
+                            alert_msg = (
+                                f"🚨 **تنبيه فرصة بيع قوية جداً!** 🔴🔴\n\n"
+                                f"الزوج: **{name}**\n"
+                                f"السعر: `{data['price']}`\n"
+                                f"RSI: `{data['rsi']}`\n"
+                                f"🛑 **SL:** `{data['sl_sell']}`\n"
+                                f"🎯 **TP:** `{data['tp_sell']}`"
+                            )
 
                         if alert_msg:
                             for user_id in users:
@@ -208,14 +243,19 @@ def callback_inline(call):
                 
                 if res["is_strong_buy"]:
                     signal = "🟢 **إشارة شراء قوية جداً (Strong BUY)**"
+                    sltp_info = f"🛑 **وقف الخسارة (SL):** `{res['sl_buy']}`\n🎯 **جني الأرباح (TP):** `{res['tp_buy']}`"
                 elif res["rsi"] <= 30:
                     signal = "🟢 **إشارة شراء (BUY)**"
+                    sltp_info = f"🛑 **وقف الخسارة (SL):** `{res['sl_buy']}`\n🎯 **جني الأرباح (TP):** `{res['tp_buy']}`"
                 elif res["is_strong_sell"]:
                     signal = "🔴 **إشارة بيع قوية جداً (Strong SELL)**"
+                    sltp_info = f"🛑 **وقف الخسارة (SL):** `{res['sl_sell']}`\n🎯 **جني الأرباح (TP):** `{res['tp_sell']}`"
                 elif res["rsi"] >= 70:
                     signal = "🔴 **إشارة بيع (SELL)**"
+                    sltp_info = f"🛑 **وقف الخسارة (SL):** `{res['sl_sell']}`\n🎯 **جني الأرباح (TP):** `{res['tp_sell']}`"
                 else:
                     signal = "⚪ **حالة محايدة (Wait / No Trade)**"
+                    sltp_info = f"💡 *مستويات الشراء:* SL `{res['sl_buy']}` | TP `{res['tp_buy']}`\n💡 *مستويات البيع:* SL `{res['sl_sell']}` | TP `{res['tp_sell']}`"
 
                 output = (
                     f"📊 **تحليل متقدم لـ {asset}**\n"
@@ -226,7 +266,8 @@ def callback_inline(call):
                     f"📉 **الاتجاه العام (EMA 50):** {res['trend']}\n"
                     f"🎯 **حالة بولينجر:** {res['bb_status']}\n"
                     f"━━━━━━━━━━━━━━━━━━\n"
-                    f"🎯 **التوصية:**\n{signal}"
+                    f"🎯 **التوصية:**\n{signal}\n\n"
+                    f"📐 **المستويات المقترحة (MT5):**\n{sltp_info}"
                 )
                 bot.send_message(call.message.chat.id, output, parse_mode="Markdown")
             else:
@@ -244,8 +285,9 @@ if __name__ == "__main__":
     scanner_thread.daemon = True
     scanner_thread.start()
 
-    print("Bot with BB is running...")
+    print("Bot with BB, RSI, EMA & SL/TP is running...")
     bot.infinity_polling(timeout=60, long_polling_timeout=1)
+    
     
     
     
