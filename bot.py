@@ -4,11 +4,9 @@ from telebot import types
 import yfinance as yf
 import pandas as pd
 
-# تعريف البوت والتوكين
 TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
-# قاموس الأزواج المحدث
 SYMBOL_MAP = {
     # الفوركس
     "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
@@ -30,7 +28,6 @@ SYMBOL_MAP = {
     "BTC": "BTC-USD", "ETH": "ETH-USD"
 }
 
-# دالة التحليل الأساسية
 def analyze_asset(ticker, interval="1m"):
     try:
         trade_duration = "دقيقة واحدة (1m)" if interval == "1m" else ("5 دقائق (5m)" if interval == "5m" else "15 دقيقة (15m)")
@@ -38,42 +35,56 @@ def analyze_asset(ticker, interval="1m"):
         
         df = yf.download(tickers=ticker, period=period, interval=interval, progress=False)
         
-        if df.empty or len(df) < 20:
-            return f"⚠️ البيانات غير متاحة حالياً للرمز {ticker} (قد يكون السوق مغلقاً)."
+        if df.empty or len(df) < 50:
+            return f"⚠️ البيانات غير متاحة حالياً للرمز {ticker}."
 
         if isinstance(df.columns, pd.MultiIndex):
             close = df['Close'][ticker].dropna()
         else:
             close = df['Close'].dropna()
 
-        # حساب RSI
+        # 1. حساب مؤشر RSI
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
 
+        # 2. حساب المتوسط المتحرك الاسي EMA 50
+        ema50 = close.ewm(span=50, adjust=False).mean()
+
         last_price = round(float(close.iloc[-1]), 4)
         last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
+        last_ema = round(float(ema50.iloc[-1]), 4)
 
-        if last_rsi >= 70:
-            signal = "🔴 **إشارة بيع (Overbought)**"
+        # تحديد الاتجاه العام (Trend)
+        trend = "📈 صاعد (Above EMA)" if last_price > last_ema else "📉 هابط (Below EMA)"
+
+        # بناء التوصية المعززة
+        if last_rsi <= 30 and last_price > last_ema:
+            signal = "🟢 **إشارة شراء قوية جداً (Strong BUY)**\n*(تشبع بيعي مع اتجاه صاعد)*"
         elif last_rsi <= 30:
-            signal = "🟢 **إشارة شراء (Oversold)**"
+            signal = "🟢 **إشارة شراء متوسطة (BUY)**\n*(تشبع بيعي)*"
+        elif last_rsi >= 70 and last_price < last_ema:
+            signal = "🔴 **إشارة بيع قوية جداً (Strong SELL)**\n*(تشبع شرائي مع اتجاه هابط)*"
+        elif last_rsi >= 70:
+            signal = "🔴 **إشارة بيع متوسطة (SELL)**\n*(تشبع شرائي)*"
         else:
-            signal = "⚪ **حالة محايدة (Neutral)**"
+            signal = "⚪ **حالة محايدة (Wait / No Trade)**"
 
         return (
-            f"📊 **نتيجة تحليل {ticker}**:\n\n"
+            f"📊 **تحليل متقدم لـ {ticker}**\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
             f"⏱️ **الإطار الزمني:** {trade_duration}\n"
             f"💵 **السعر الحالي:** `{last_price}`\n"
-            f"📈 **قيمة RSI (14):** `{last_rsi}`\n\n"
-            f"🎯 **التوصية:** {signal}"
+            f"📈 **قيمة RSI:** `{last_rsi}`\n"
+            f"📉 **الاتجاه العام (EMA 50):** {trend}\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"🎯 **التوصية:**\n{signal}"
         )
     except Exception as e:
         return f"⚠️ حدث خطأ أثناء التحليل: {str(e)}"
 
-# إنشاء أزرار الفريمات الزمنية
 def get_timeframe_keyboard(asset_key):
     markup = types.InlineKeyboardMarkup(row_width=3)
     btn1 = types.InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"{asset_key}|1m")
@@ -82,7 +93,6 @@ def get_timeframe_keyboard(asset_key):
     markup.add(btn1, btn2, btn3)
     return markup
 
-# أمر البدء لعرض القائمة بكل العملات
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -100,7 +110,6 @@ def send_welcome(message):
     markup.add(*buttons)
     bot.send_message(message.chat.id, "📊 **اختر الزوج أو الأصل لاستخراج الإشارة:**", reply_markup=markup)
 
-# الاستجابة عند اختيار الزوج لطلب الفريم الزمني
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     if call.message:
@@ -110,7 +119,7 @@ def callback_inline(call):
         if "|" in data:
             asset, interval = data.split("|")
             ticker = SYMBOL_MAP.get(asset, asset)
-            bot.send_message(call.message.chat.id, f"⏳ جاري جلب البيانات وتحليل {asset}...")
+            bot.send_message(call.message.chat.id, f"⏳ جاري تحليل {asset} بواسطة RSI + EMA...")
             result = analyze_asset(ticker, interval)
             bot.send_message(call.message.chat.id, result, parse_mode="Markdown")
         else:
@@ -121,10 +130,10 @@ def callback_inline(call):
                 parse_mode="Markdown"
             )
 
-# تشغيل البوت
 if __name__ == "__main__":
-    print("Bot is running...")
+    print("Bot is running with EMA & RSI indicators...")
     bot.infinity_polling(timeout=60, long_polling_timeout=1)
+    
     
     
     
