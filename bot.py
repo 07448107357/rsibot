@@ -8,7 +8,7 @@ import pandas as pd
 TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
-# قاموس الأزواج المحدث شاملاً جميع العملات الخاصة بك
+# قاموس الأزواج المحدث
 SYMBOL_MAP = {
     # الفوركس
     "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
@@ -86,8 +86,6 @@ def get_timeframe_keyboard(asset_key):
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    
-    # إضافة الأزرار من القائمة
     buttons = [
         types.InlineKeyboardButton("EUR/USD 🇪🇺🇺🇸", callback_data="EURUSD"),
         types.InlineKeyboardButton("GBP/USD 🇬🇧🇺🇸", callback_data="GBPUSD"),
@@ -109,7 +107,6 @@ def callback_inline(call):
         bot.answer_callback_query(call.id)
         data = call.data
         
-        # إذا كانت الاستجابة تتضمن اختيار الفريم الزمني
         if "|" in data:
             asset, interval = data.split("|")
             ticker = SYMBOL_MAP.get(asset, asset)
@@ -117,7 +114,6 @@ def callback_inline(call):
             result = analyze_asset(ticker, interval)
             bot.send_message(call.message.chat.id, result, parse_mode="Markdown")
         else:
-            # إذا اختار المستخدم الزوج، يتم عرض أزرار الفريمات الزمنية له
             bot.send_message(
                 call.message.chat.id, 
                 f"⏱️ **اختر الإطار الزمني للتحليل الخاص بـ ({data}):**", 
@@ -129,5 +125,6 @@ def callback_inline(call):
 if __name__ == "__main__":
     print("Bot is running...")
     bot.infinity_polling(timeout=60, long_polling_timeout=1)
+    
     
     
