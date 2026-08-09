@@ -6,29 +6,31 @@ import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# ==================== موسوعة الأصول والشاشات الشاملة ====================
-SYMBOL_MAP = {
-    # الفوركس الرئيسي والفرعي (Spot Forex =X)
-    "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
-    "USD/CAD": "CAD=X", "AUD/USD": "AUDUSD=X", "USD/CHF": "CHF=X",
-    "NZD/USD": "NZDUSD=X", "EUR/GBP": "EURGBP=X", "EUR/JPY": "EURJPY=X",
-    "GBP/JPY": "GBPJPY=X", "EUR/CAD": "EURCAD=X", "EUR/AUD": "EURAUD=X",
-    "EUR/CHF": "EURCHF=X", "GBP/CAD": "GBPCAD=X", "GBP/AUD": "GBPAUD=X",
-    "GBP/CHF": "GBPCHF=X", "AUD/CAD": "AUDCAD=X", "AUD/JPY": "AUDJPY=X",
-    "AUD/NZD": "AUDNZD=X", "NZD/JPY": "NZDJPY=X", "CAD/JPY": "CADJPY=X",
-    "CHF/JPY": "CHFJPY=X",
-    
-    # السلع والمعادن (Spot Metals)
-    "الذهب (Gold)": "XAUUSD=X", "الفضة (Silver)": "XAGUSD=X", "النفط (Oil)": "CL=F",
-    
-    # العملات الرقمية
-    "Bitcoin": "BTC-USD", "Ethereum": "ETH-USD", "Solana": "SOL-USD", 
-    "Binance Coin": "BNB-USD", "XRP": "XRP-USD", "Cardano": "ADA-USD",
-    
-    # الأسهم العالمية الكبرى
-    "Apple": "AAPL", "Tesla": "TSLA", "NVIDIA": "NVDA", "Amazon": "AMZN", 
-    "Microsoft": "MSFT", "Netflix": "NFLX", "Google": "GOOGL", "Meta": "META"
+# ==================== موسوعة الأصول والأقسام ====================
+FOREX_PAIRS = {
+    "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X", "USD/CAD": "CAD=X",
+    "AUD/USD": "AUDUSD=X", "USD/CHF": "CHF=X", "NZD/USD": "NZDUSD=X", "EUR/GBP": "EURGBP=X",
+    "EUR/JPY": "EURJPY=X", "GBP/JPY": "GBPJPY=X", "EUR/CAD": "EURCAD=X", "GBP/CAD": "GBPCAD=X",
+    "AUD/JPY": "AUDJPY=X", "CAD/JPY": "CADJPY=X", "CHF/JPY": "CHFJPY=X", "EUR/AUD": "EURAUD=X"
 }
+
+STOCKS = {
+    "Apple": "AAPL", "Tesla": "TSLA", "NVIDIA": "NVDA", "Amazon": "AMZN",
+    "Microsoft": "MSFT", "Netflix": "NFLX", "Google": "GOOGL", "Meta": "META",
+    "AMD": "AMD", "Intel": "INTC"
+}
+
+COMMODITIES = {
+    "الذهب (Gold)": "XAUUSD=X", "الفضة (Silver)": "XAGUSD=X", "النفط (Oil)": "CL=F"
+}
+
+CRYPTO = {
+    "Bitcoin": "BTC-USD", "Ethereum": "ETH-USD", "Solana": "SOL-USD",
+    "XRP": "XRP-USD", "Binance Coin": "BNB-USD", "Cardano": "ADA-USD"
+}
+
+# دمج كل الأصول في قاموس واحد للبحث
+SYMBOL_MAP = {**FOREX_PAIRS, **STOCKS, **COMMODITIES, **CRYPTO}
 
 TIMEFRAME_MAP = {
     "1m": {"interval": "1m", "period": "1d", "label": "دقيقة واحدة (1m)"},
@@ -38,7 +40,7 @@ TIMEFRAME_MAP = {
 
 SUBSCRIBED_USERS = set()
 
-# ==================== دالّات التحليل الفني ====================
+# ==================== المؤشرات الفنية المتقدمة ====================
 def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     delta = series.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -50,6 +52,21 @@ def calculate_bollinger_bands(series: pd.Series, period: int = 20, std_dev: int 
     sma = series.rolling(window=period).mean()
     std = series.rolling(window=period).std()
     return sma + (std * std_dev), sma - (std * std_dev), sma
+
+def calculate_macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
+    ema_fast = series.ewm(span=fast, adjust=False).mean()
+    ema_slow = series.ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
+def calculate_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, k_period: int = 14, d_period: int = 3):
+    lowest_low = low.rolling(window=k_period).min()
+    highest_high = high.rolling(window=k_period).max()
+    k = 100 * ((close - lowest_low) / (highest_high - lowest_low))
+    d = k.rolling(window=d_period).mean()
+    return k, d
 
 def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     high_low = df['High'] - df['Low']
@@ -73,6 +90,8 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
 
         rsi = calculate_rsi(close, 14)
         upper_band, lower_band, sma20 = calculate_bollinger_bands(close, 20, 2)
+        macd, macd_sig, macd_hist = calculate_macd(close)
+        stoch_k, stoch_d = calculate_stochastic(high, low, close)
         ema50 = close.ewm(span=50, adjust=False).mean()
         atr = calculate_atr(pd.DataFrame({'High': high, 'Low': low, 'Close': close}), 14)
 
@@ -81,39 +100,32 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
 
         last_price = round(float(close.iloc[-1]), decimals)
         last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
-        last_ema = round(float(ema50.iloc[-1]), decimals)
         last_upper = round(float(upper_band.fillna(last_price).iloc[-1]), decimals)
         last_lower = round(float(lower_band.fillna(last_price).iloc[-1]), decimals)
-        last_atr = float(atr.fillna(0).iloc[-1])
-
-        if last_atr == 0:
-            last_atr = last_price * 0.0015
+        last_macd_hist = float(macd_hist.fillna(0).iloc[-1])
+        last_stoch_k = round(float(stoch_k.fillna(50).iloc[-1]), 2)
+        last_atr = float(atr.fillna(0).iloc[-1]) or (last_price * 0.0015)
 
         sl_buy = round(last_price - (last_atr * 1.5), decimals)
         tp_buy = round(last_price + (last_atr * 2.5), decimals)
         sl_sell = round(last_price + (last_atr * 1.5), decimals)
         tp_sell = round(last_price - (last_atr * 2.5), decimals)
 
-        trend = "صاعد (Above EMA)" if last_price > last_ema else "هابط (Below EMA)"
-
-        if last_price >= last_upper:
-            bb_state = "أعلى Bollinger Band (فرصة ارتداد هابط)"
-        elif last_price <= last_lower:
-            bb_state = "أسفل Bollinger Band (فرصة ارتداد صاعد)"
-        else:
-            bb_state = "داخل Bollinger Bands"
-
+        # استراتيجية تأكيد متعددة (RSI + Bollinger + Stochastic + MACD)
         signal = "WAIT"
-        signal_text = "حالة محايدة (Wait / No Trade)"
+        signal_text = "حالة محايدة (Wait)"
         signal_emoji = "⚪"
 
-        if last_rsi < 32 and last_price <= last_lower:
+        buy_cond = (last_rsi < 35) and (last_price <= last_lower) and (last_stoch_k < 25)
+        sell_cond = (last_rsi > 65) and (last_price >= last_upper) and (last_stoch_k > 75)
+
+        if buy_cond:
             signal = "BUY"
-            signal_text = "إشارة شراء (BUY)"
+            signal_text = "إشارة شراء قوية (BUY)"
             signal_emoji = "🟢"
-        elif last_rsi > 68 and last_price >= last_upper:
+        elif sell_cond:
             signal = "SELL"
-            signal_text = "إشارة بيع (SELL)"
+            signal_text = "إشارة بيع قوية (SELL)"
             signal_emoji = "🔴"
 
         return {
@@ -121,43 +133,35 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             "tf_label": tf_info["label"],
             "price": last_price,
             "rsi": last_rsi,
-            "trend": trend,
-            "bb_state": bb_state,
+            "stoch": last_stoch_k,
+            "macd_status": "إيجابي 🟢" if last_macd_hist > 0 else "سلبي 🔴",
             "signal": signal,
             "signal_text": signal_text,
             "signal_emoji": signal_emoji,
-            "sl_buy": sl_buy,
-            "tp_buy": tp_buy,
-            "sl_sell": sl_sell,
-            "tp_sell": tp_sell
+            "sl_buy": sl_buy, "tp_buy": tp_buy,
+            "sl_sell": sl_sell, "tp_sell": tp_sell
         }
     except Exception as e:
-        return {"error": f"حدث خطأ أثناء تحليل البيانات: {str(e)}"}
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
-# ==================== نظام التنبيهات المنبه الآلي المتكامل ====================
+# ==================== المنبه التلقائي ====================
 async def auto_alert_checker(app: Application):
-    # قائمة المراقبة الموسعة للتنبيهات التلقائية
-    watchlist = [
-        "EUR/USD", "GBP/USD", "USD/JPY", "GBP/JPY",
-        "الذهب (Gold)", "الفضة (Silver)", "النفط (Oil)",
-        "Bitcoin", "Ethereum", "Solana",
-        "Apple", "Tesla", "NVIDIA", "Amazon", "Netflix", "Google"
-    ]
-    
+    watchlist = ["EUR/USD", "GBP/USD", "USD/JPY", "الذهب (Gold)", "Bitcoin", "NVIDIA", "Tesla", "Apple"]
     while True:
         try:
-            await asyncio.sleep(60) # فحص كل دقيقة
+            await asyncio.sleep(60)
             for symbol in watchlist:
                 res = analyze_asset(symbol, "5m")
                 if "error" not in res and res["signal"] in ["BUY", "SELL"]:
                     alert_msg = (
-                        f"🔔 **تنبيه إشارة تداول جديدة!** 🔔\n"
+                        f"🔔 **تنبيه إشارة فرصة قوية!** 🔔\n"
                         f"───────────────────\n"
                         f"📊 **الأصل:** {res['symbol']}\n"
                         f"⏱️ **الإطار:** 5 دقائق\n"
                         f"💵 **السعر:** `{res['price']}`\n"
                         f"🎯 **التوصية:** {res['signal_emoji']} **{res['signal_text']}**\n"
-                        f"📈 **RSI:** `{res['rsi']}`\n"
+                        f"📈 **RSI:** `{res['rsi']}` | **Stoch:** `{res['stoch']}`\n"
+                        f"📊 **MACD:** {res['macd_status']}\n"
                         f"───────────────────\n"
                         f"💡 **TP:** `{res['tp_buy'] if res['signal']=='BUY' else res['tp_sell']}` | **SL:** `{res['sl_buy'] if res['signal']=='BUY' else res['sl_sell']}`"
                     )
@@ -166,26 +170,27 @@ async def auto_alert_checker(app: Application):
                             await app.bot.send_message(chat_id=user_id, text=alert_msg, parse_mode="Markdown")
                         except Exception:
                             pass
-        except Exception as e:
+        except Exception:
             await asyncio.sleep(10)
 
-# ==================== قوائم الأزرار والواجهة ====================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat:
-        SUBSCRIBED_USERS.add(update.effective_chat.id)
+# ==================== الأزرار والواجهة ====================
+def build_menu_keyboard(user_id: int):
+    alert_status = "🔔 المنبه: مفعّل" if user_id in SUBSCRIBED_USERS else "🔕 المنبه: معطّل"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("💱 أزواج الفوركس", callback_data="cat_forex"), InlineKeyboardButton("📈 الأسهم العالمية", callback_data="cat_stocks")],
+        [InlineKeyboardButton("🪙 السلع والمعادن", callback_data="cat_commodities"), InlineKeyboardButton("⚡ العملات الرقمية", callback_data="cat_crypto")],
+        [InlineKeyboardButton(f"{alert_status} (اضغط للتغيير)", callback_data="toggle_alerts")]
+    ])
 
-    keyboard = [
-        [InlineKeyboardButton("🏆 EUR/USD", callback_data="select_EUR/USD"), InlineKeyboardButton("🏆 GBP/USD", callback_data="select_GBP/USD")],
-        [InlineKeyboardButton("🪙 الذهب (Gold)", callback_data="select_الذهب (Gold)"), InlineKeyboardButton("🥈 الفضة (Silver)", callback_data="select_الفضة (Silver)")],
-        [InlineKeyboardButton("⚡ Bitcoin", callback_data="select_Bitcoin"), InlineKeyboardButton("⚡ Ethereum", callback_data="select_Ethereum")],
-        [InlineKeyboardButton("🍎 Apple", callback_data="select_Apple"), InlineKeyboardButton("🚗 Tesla", callback_data="select_Tesla")],
-        [InlineKeyboardButton("🌐 باقي الأزواج والأسهم والعملات", callback_data="more_assets")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    if chat_id:
+        SUBSCRIBED_USERS.add(chat_id)
+
+    reply_markup = build_menu_keyboard(chat_id)
     welcome_msg = (
-        "👋 **أهلاً بك في بوت التحليل المتقدم للأسواق العالمية**\n\n"
-        "🔔 *تم تفعيل نظام المنبه الآلي للتنبيهات تلقائياً لحسابك!*\n"
-        "اختر الزوج أو الأصل الذي تريد تحليله مباشرة:"
+        "👋 **مرحباً بك في بوت التداول الفني المتقدم**\n\n"
+        "اختر القسم الذي تريد استعراض أصوله للتحليل اللحظي:"
     )
     if update.message:
         await update.message.reply_text(welcome_msg, parse_mode="Markdown", reply_markup=reply_markup)
@@ -196,17 +201,40 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    chat_id = query.message.chat_id
 
-    if data == "more_assets":
-        keyboard = [
-            [InlineKeyboardButton("📊 USD/JPY", callback_data="select_USD/JPY"), InlineKeyboardButton("📊 GBP/JPY", callback_data="select_GBP/JPY")],
-            [InlineKeyboardButton("📊 AUD/USD", callback_data="select_AUD/USD"), InlineKeyboardButton("📊 USD/CAD", callback_data="select_USD/CAD")],
-            [InlineKeyboardButton("💚 Solana", callback_data="select_Solana"), InlineKeyboardButton("💚 XRP", callback_data="select_XRP")],
-            [InlineKeyboardButton("💻 NVIDIA", callback_data="select_NVIDIA"), InlineKeyboardButton("📦 Amazon", callback_data="select_Amazon")],
-            [InlineKeyboardButton("🎬 Netflix", callback_data="select_Netflix"), InlineKeyboardButton("🔍 Google", callback_data="select_Google")],
-            [InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]
-        ]
-        await query.message.edit_text("🌐 **اختر من قائمة الأصول والأسهم الإضافية:**", parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
+    if data == "toggle_alerts":
+        if chat_id in SUBSCRIBED_USERS:
+            SUBSCRIBED_USERS.remove(chat_id)
+            await query.answer("🔕 تم إيقاف المنبه التلقائي لحسابك.", show_alert=True)
+        else:
+            SUBSCRIBED_USERS.add(chat_id)
+            await query.answer("🔔 تم تفعيل المنبه التلقائي لحسابك!", show_alert=True)
+        await query.message.edit_reply_markup(reply_markup=build_menu_keyboard(chat_id))
+
+    elif data.startswith("cat_"):
+        cat = data.split("cat_")[1]
+        items = {}
+        title = ""
+        if cat == "forex":
+            items, title = FOREX_PAIRS, "💱 قائمة أزواج الفوركس:"
+        elif cat == "stocks":
+            items, title = STOCKS, "📈 قائمة الأسهم العالمية:"
+        elif cat == "commodities":
+            items, title = COMMODITIES, "🪙 قائمة السلع والمعادن:"
+        elif cat == "crypto":
+            items, title = CRYPTO, "⚡ قائمة العملات الرقمية:"
+
+        buttons = []
+        keys = list(items.keys())
+        for i in range(0, len(keys), 2):
+            row = [InlineKeyboardButton(keys[i], callback_data=f"select_{keys[i]}")]
+            if i + 1 < len(keys):
+                row.append(InlineKeyboardButton(keys[i+1], callback_data=f"select_{keys[i+1]}"))
+            buttons.append(row)
+        buttons.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
+
+        await query.message.edit_text(title, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
 
     elif data.startswith("select_"):
         symbol = data.split("select_")[1]
@@ -218,11 +246,11 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data="main_menu")]
         ]
-        await query.message.edit_text(f"⏰ اختر الإطار الزمني للتحليل الخاص بـ ({symbol}):", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.edit_text(f"⏰ اختر الإطار الزمني لـ ({symbol}):", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data.startswith("tf_"):
         _, symbol, tf = data.split("_")
-        await query.message.edit_text(f"⏳ جاري تحليل {symbol}...")
+        await query.message.edit_text(f"⏳ جاري تحليل {symbol} باستخدام (RSI, Bollinger, MACD, Stochastic)...")
         res = analyze_asset(symbol, tf)
 
         if "error" in res:
@@ -230,19 +258,19 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         msg = (
-            f"📊 **تحليل متقدم لـ {res['symbol']}**\n"
+            f"📊 **تحليل فني متكامل لـ {res['symbol']}**\n"
             f"───────────────────\n"
             f"⏱️ **الإطار الزمني:** {res['tf_label']}\n"
             f"💵 **السعر الحالي:** `{res['price']}`\n"
-            f"📈 **قيمة RSI:** `{res['rsi']}`\n"
-            f"📉 **الاتجاه العام (EMA 50):** {res['trend']}\n"
-            f"🎯 **حالة بولينجر:** {res['bb_state']}\n"
+            f"📈 **مؤشر RSI:** `{res['rsi']}`\n"
+            f"📊 **مؤشر Stochastic:** `{res['stoch']}`\n"
+            f"🌊 **مؤشر MACD:** {res['macd_status']}\n"
             f"───────────────────\n"
-            f"🎯 **التوصية:**\n"
+            f"🎯 **التوصية النهائية:**\n"
             f"{res['signal_emoji']} **{res['signal_text']}**\n\n"
-            f"📐 **المستويات المقترحة (MT5):**\n"
-            f"💡 **مستويات الشراء:** TP `{res['tp_buy']}` | SL `{res['sl_buy']}`\n"
-            f"💡 **مستويات البيع:** TP `{res['tp_sell']}` | SL `{res['sl_sell']}`"
+            f"📐 **الأهداف المقترحة (MT5):**\n"
+            f"💡 **الشراء:** TP `{res['tp_buy']}` | SL `{res['sl_buy']}`\n"
+            f"💡 **البيع:** TP `{res['tp_sell']}` | SL `{res['sl_sell']}`"
         )
 
         keyboard = [[InlineKeyboardButton("🔄 إعادة التحليل", callback_data=f"tf_{symbol}_{tf}"), InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]]
@@ -257,24 +285,13 @@ async def post_init(app: Application):
 def main():
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
-        print("❌ Error: TELEGRAM_BOT_TOKEN environment variable is missing!")
         return
 
     app = Application.builder().token(token).post_init(post_init).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_click))
-
-    print("🚀 Bot is running with auto-alerts and full asset map...")
     app.run_polling()
 
 if __name__ == "__main__":
     main()
-    
-    
-    
-    
-    
-    
-    
-    
     
