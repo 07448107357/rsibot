@@ -11,9 +11,7 @@ bot = telebot.TeleBot(TOKEN)
 
 USERS_FILE = "users.txt"
 
-# قائمة شاملة لجميع الأزواج والأسواق
 SYMBOL_MAP = {
-    # الفوركس
     "EUR/USD": "EURUSD=X", "GBP/USD": "GBPUSD=X", "USD/JPY": "JPY=X",
     "USD/CAD": "CAD=X", "AUD/USD": "AUDUSD=X", "USD/CHF": "CHF=X",
     "NZD/USD": "NZDUSD=X", "EUR/GBP": "EURGBP=X", "EUR/JPY": "EURJPY=X",
@@ -22,10 +20,8 @@ SYMBOL_MAP = {
     "GBP/CHF": "GBPCHF=X", "AUD/CAD": "AUDCAD=X", "AUD/JPY": "AUDJPY=X",
     "AUD/NZD": "AUDNZD=X", "NZD/JPY": "NZDJPY=X", "CAD/JPY": "CADJPY=X",
     "CHF/JPY": "CHFJPY=X",
-    # السلع والمعادن والعملات الرقمية
     "الذهب (Gold)": "GC=F", "الفضة (Silver)": "SI=F", "النفط (Crude Oil)": "CL=F",
     "Bitcoin": "BTC-USD", "Ethereum": "ETH-USD",
-    # الرموز المباشرة
     "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "JPY=X",
     "USDCAD": "CAD=X", "USDCHF": "CHF=X", "AUDUSD": "AUDUSD=X",
     "NZDUSD": "NZDUSD=X", "EURGBP": "EURGBP=X", "EURJPY": "EURJPY=X",
@@ -45,6 +41,14 @@ def save_user(chat_id):
         with open(USERS_FILE, "a") as f:
             f.write(f"{chat_id}\n")
 
+def remove_user(chat_id):
+    users = load_users()
+    if str(chat_id) in users:
+        users.remove(str(chat_id))
+        with open(USERS_FILE, "w") as f:
+            for uid in users:
+                f.write(f"{uid}\n")
+
 def analyze_asset(ticker, interval="5m"):
     try:
         df = yf.download(tickers=ticker, period="5d", interval=interval, progress=False)
@@ -56,22 +60,39 @@ def analyze_asset(ticker, interval="5m"):
         else:
             close = df['Close'].dropna()
 
-        # حساب RSI
+        # 1. RSI
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
 
-        # حساب EMA 50
+        # 2. EMA 50
         ema50 = close.ewm(span=50, adjust=False).mean()
+
+        # 3. Bollinger Bands (20, 2)
+        sma20 = close.rolling(window=20).mean()
+        std20 = close.rolling(window=20).std()
+        upper_band = sma20 + (std20 * 2)
+        lower_band = sma20 - (std20 * 2)
 
         last_price = round(float(close.iloc[-1]), 4)
         last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
         last_ema = round(float(ema50.iloc[-1]), 4)
+        last_upper = round(float(upper_band.iloc[-1]), 4)
+        last_lower = round(float(lower_band.iloc[-1]), 4)
 
-        is_strong_buy = (last_rsi <= 30) and (last_price > last_ema)
-        is_strong_sell = (last_rsi >= 70) and (last_price < last_ema)
+        # تحديد موضع السعر بالنسبة لـ Bollinger Bands
+        if last_price <= last_lower:
+            bb_status = "📉 أسفل Bollinger Band (فرصة ارتداد صاعد)"
+        elif last_price >= last_upper:
+            bb_status = "📈 أعلى Bollinger Band (فرصة ارتداد هابط)"
+        else:
+            bb_status = "↔️ داخل Bollinger Bands"
+
+        # الشروط المعززة بإضافة Bollinger Bands
+        is_strong_buy = (last_rsi <= 30) and (last_price <= last_lower) and (last_price > last_ema)
+        is_strong_sell = (last_rsi >= 70) and (last_price >= last_upper) and (last_price < last_ema)
 
         trend = "📈 صاعد (Above EMA)" if last_price > last_ema else "📉 هابط (Below EMA)"
 
@@ -79,20 +100,21 @@ def analyze_asset(ticker, interval="5m"):
             "price": last_price,
             "rsi": last_rsi,
             "trend": trend,
+            "bb_status": bb_status,
+            "upper_bb": last_upper,
+            "lower_bb": last_lower,
             "is_strong_buy": is_strong_buy,
             "is_strong_sell": is_strong_sell
         }
     except Exception:
         return None
 
-# دالة الفحص الدوري للتنبيهات (يفحص جميع العملات كل 5 دقائق)
 def auto_scanner():
     while True:
         try:
             users = load_users()
             if users:
                 for name, ticker in SYMBOL_MAP.items():
-                    # تجنب تكرار الرموز المرادفة
                     if "/" not in name and name not in ["Bitcoin", "Ethereum", "الذهب (Gold)", "الفضة (Silver)", "النفط (Crude Oil)"]:
                         continue
                         
@@ -100,9 +122,9 @@ def auto_scanner():
                     if data:
                         alert_msg = None
                         if data["is_strong_buy"]:
-                            alert_msg = f"🚨 **تنبيه فرصة شراء قوية!** 🟢\n\nالزوج: **{name}**\nالسعر: `{data['price']}`\nRSI: `{data['rsi']}`\nالاتجاه: صاعد (فوق EMA 50)"
+                            alert_msg = f"🚨 **تنبيه فرصة شراء قوية جداً!** 🟢🟢\n\nالزوج: **{name}**\nالسعر: `{data['price']}`\nRSI: `{data['rsi']}`\nBollinger: كسرت الحد السفلي\nالاتجاه: فوق EMA 50"
                         elif data["is_strong_sell"]:
-                            alert_msg = f"🚨 **تنبيه فرصة بيع قوية!** 🔴\n\nالزوج: **{name}**\nالسعر: `{data['price']}`\nRSI: `{data['rsi']}`\nالاتجاه: هابط (تحت EMA 50)"
+                            alert_msg = f"🚨 **تنبيه فرصة بيع قوية جداً!** 🔴🔴\n\nالزوج: **{name}**\nالسعر: `{data['price']}`\nRSI: `{data['rsi']}`\nBollinger: كسرت الحد العلوي\nالاتجاه: تحت EMA 50"
 
                         if alert_msg:
                             for user_id in users:
@@ -110,16 +132,20 @@ def auto_scanner():
                                     bot.send_message(user_id, alert_msg, parse_mode="Markdown")
                                 except Exception:
                                     pass
-            time.sleep(300) # فحص كل 5 دقائق
+            time.sleep(300)
         except Exception as e:
             print(f"Error in scanner: {e}")
             time.sleep(60)
 
-# القائمة التفاعلية في التلجرام
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     save_user(message.chat.id)
     markup = types.InlineKeyboardMarkup(row_width=2)
+    
+    btn_enable = types.InlineKeyboardButton("🔔 تفعيل التنبيهات", callback_data="ENABLE_ALERTS")
+    btn_disable = types.InlineKeyboardButton("🔕 إيقاف التنبيهات", callback_data="DISABLE_ALERTS")
+    markup.add(btn_enable, btn_disable)
+
     buttons = [
         types.InlineKeyboardButton("EUR/USD 🇪🇺🇺🇸", callback_data="EURUSD"),
         types.InlineKeyboardButton("GBP/USD 🇬🇧🇺🇸", callback_data="GBPUSD"),
@@ -136,10 +162,12 @@ def send_welcome(message):
         types.InlineKeyboardButton("Ethereum 💎", callback_data="ETH")
     ]
     markup.add(*buttons)
+    
     bot.send_message(
         message.chat.id, 
-        "📊 **مرحباً بك! تم تفعيل التنبيهات التلقائية لك.**\nاختر الزوج للحصول على تحليل مباشر:", 
-        reply_markup=markup
+        "📊 **مرحباً بك! اختر الخدمة المطلوبة أو ابدأ بالتحليل المباشر:**", 
+        reply_markup=markup,
+        parse_mode="Markdown"
     )
 
 def get_timeframe_keyboard(asset_key):
@@ -156,6 +184,15 @@ def callback_inline(call):
         bot.answer_callback_query(call.id)
         data = call.data
         
+        if data == "ENABLE_ALERTS":
+            save_user(call.message.chat.id)
+            bot.send_message(call.message.chat.id, "🔔 **تم تفعيل التنبيهات التلقائية بنجاح!**")
+            return
+        elif data == "DISABLE_ALERTS":
+            remove_user(call.message.chat.id)
+            bot.send_message(call.message.chat.id, "🔕 **تم إيقاف التنبيهات التلقائية.**")
+            return
+
         if "|" in data:
             asset, interval = data.split("|")
             ticker = SYMBOL_MAP.get(asset, asset)
@@ -183,6 +220,7 @@ def callback_inline(call):
                     f"💵 **السعر الحالي:** `{res['price']}`\n"
                     f"📈 **قيمة RSI:** `{res['rsi']}`\n"
                     f"📉 **الاتجاه العام (EMA 50):** {res['trend']}\n"
+                    f"🎯 **حالة بولينجر:** {res['bb_status']}\n"
                     f"━━━━━━━━━━━━━━━━━━\n"
                     f"🎯 **التوصية:**\n{signal}"
                 )
@@ -202,8 +240,9 @@ if __name__ == "__main__":
     scanner_thread.daemon = True
     scanner_thread.start()
 
-    print("Bot with Full Pairs & Auto-Alerts is running...")
+    print("Bot with BB is running...")
     bot.infinity_polling(timeout=60, long_polling_timeout=1)
+    
     
     
     
