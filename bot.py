@@ -29,7 +29,6 @@ CRYPTO = {
     "XRP": "XRP-USD", "Binance Coin": "BNB-USD", "Cardano": "ADA-USD"
 }
 
-# دمج كل الأصول في قاموس واحد للبحث
 SYMBOL_MAP = {**FOREX_PAIRS, **STOCKS, **COMMODITIES, **CRYPTO}
 
 TIMEFRAME_MAP = {
@@ -40,7 +39,7 @@ TIMEFRAME_MAP = {
 
 SUBSCRIBED_USERS = set()
 
-# ==================== المؤشرات الفنية المتقدمة ====================
+# ==================== المؤشرات الفنية ====================
 def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     delta = series.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
@@ -102,6 +101,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
         last_upper = round(float(upper_band.fillna(last_price).iloc[-1]), decimals)
         last_lower = round(float(lower_band.fillna(last_price).iloc[-1]), decimals)
+        last_ema = round(float(ema50.iloc[-1]), decimals)
         last_macd_hist = float(macd_hist.fillna(0).iloc[-1])
         last_stoch_k = round(float(stoch_k.fillna(50).iloc[-1]), 2)
         last_atr = float(atr.fillna(0).iloc[-1]) or (last_price * 0.0015)
@@ -111,22 +111,44 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         sl_sell = round(last_price + (last_atr * 1.5), decimals)
         tp_sell = round(last_price - (last_atr * 2.5), decimals)
 
-        # استراتيجية تأكيد متعددة (RSI + Bollinger + Stochastic + MACD)
-        signal = "WAIT"
-        signal_text = "حالة محايدة (Wait)"
-        signal_emoji = "⚪"
+        # خوارزمية إشارات مرنة ومستجيبة للسوق
+        buy_score = 0
+        sell_score = 0
 
-        buy_cond = (last_rsi < 35) and (last_price <= last_lower) and (last_stoch_k < 25)
-        sell_cond = (last_rsi > 65) and (last_price >= last_upper) and (last_stoch_k > 75)
+        # نقاط RSI
+        if last_rsi < 35: buy_score += 2
+        elif last_rsi < 45: buy_score += 1
+        elif last_rsi > 65: sell_score += 2
+        elif last_rsi > 55: sell_score += 1
 
-        if buy_cond:
+        # نقاط Stochastic
+        if last_stoch_k < 30: buy_score += 2
+        elif last_stoch_k > 70: sell_score += 2
+
+        # نقاط Bollinger Bands
+        if last_price <= last_lower: buy_score += 2
+        elif last_price >= last_upper: sell_score += 2
+
+        # نقاط الاتجاه EMA & MACD
+        if last_price > last_ema: buy_score += 1
+        else: sell_score += 1
+
+        if last_macd_hist > 0: buy_score += 1
+        else: sell_score += 1
+
+        # تحديد التوصية النهائية
+        if buy_score >= 4 and buy_score > sell_score:
             signal = "BUY"
-            signal_text = "إشارة شراء قوية (BUY)"
+            signal_text = "إشارة شراء (BUY)"
             signal_emoji = "🟢"
-        elif sell_cond:
+        elif sell_score >= 4 and sell_score > buy_score:
             signal = "SELL"
-            signal_text = "إشارة بيع قوية (SELL)"
+            signal_text = "إشارة بيع (SELL)"
             signal_emoji = "🔴"
+        else:
+            signal = "WAIT"
+            signal_text = "حالة محايدة - انتظار فرصة أفضل (Wait)"
+            signal_emoji = "⚪"
 
         return {
             "symbol": symbol_key,
@@ -250,7 +272,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("tf_"):
         _, symbol, tf = data.split("_")
-        await query.message.edit_text(f"⏳ جاري تحليل {symbol} باستخدام (RSI, Bollinger, MACD, Stochastic)...")
+        await query.message.edit_text(f"⏳ جاري تحليل {symbol}...")
         res = analyze_asset(symbol, tf)
 
         if "error" in res:
@@ -294,4 +316,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
     
