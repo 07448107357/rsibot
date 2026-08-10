@@ -91,7 +91,6 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         if df.empty or len(df) < 20:
             return {"error": f"السوق مغلق حالياً أو البيانات غير متوفرة لـ {symbol_key}."}
 
-        # معالجة صحيحة للجداول سواء كانت أحادية أو متعددة المستويات
         if isinstance(df.columns, pd.MultiIndex):
             close = df['Close'][ticker].dropna()
             high = df['High'][ticker].dropna()
@@ -215,8 +214,6 @@ def build_menu_keyboard(user_id: int):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id if update.effective_chat else None
-    if chat_id:
-        SUBSCRIBED_USERS.add(chat_id)
 
     reply_markup = build_menu_keyboard(chat_id)
     welcome_msg = (
@@ -325,6 +322,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
     
     
     
