@@ -173,7 +173,8 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             "sl_sell": sl_sell, "tp_sell": tp_sell
         }
     except Exception as e:
-        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+                return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+        
         
 
 # ==================== المنبه التلقائي ====================
