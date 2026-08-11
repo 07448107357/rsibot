@@ -153,11 +153,12 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             signal_text = "حالة محايدة - انتظار فرصة مؤكدة (Wait)"
             signal_emoji = "⚪"
 
-        sl_buy = round(last_price - (last_atr * 1.5), decimals)
-        tp_buy = round(last_price + (last_atr * 2.5), decimals)
-        sl_sell = round(last_price + (last_atr * 1.5), decimals)
-        tp_sell = round(last_price - (last_atr * 2.5), decimals)
-   return {
+            sl_buy = round(last_price - (last_atr * 1.5), decimals)
+    tp_buy = round(last_price + (last_atr * 2.0), decimals)
+    sl_sell = round(last_price + (last_atr * 1.5), decimals)
+    tp_sell = round(last_price - (last_atr * 2.0), decimals)
+
+    return {
         "symbol": symbol_key,
         "tf_label": tf_info["label"],
         "price": last_price,
@@ -168,7 +169,8 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         "signal_emoji": signal_emoji,
         "sl_buy": sl_buy, "tp_buy": tp_buy,
         "sl_sell": sl_sell, "tp_sell": tp_sell
-            }
+    }
+    
         
     
                 
