@@ -8,8 +8,8 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 # ==================== موسوعة الأصول المزودة بالألوان والرموز ====================
 FOREX_PAIRS = {
-    "🟢 EURUSD": "EURUSD=X", "🔵 GBPUSD": "GBPUSD=X", "🔴 USD/JPY": "JPY=X",
-    "🇨🇦 USDCAD": "CAD=X", "🇦🇺 AUD/USD": "AUDUSD=X", "🇨🇭 USD/CHF": "CHF=X", 
+    "🟢 EURUSD": "EURUSD=X", "🔵 GBPUSD": "GBPUSD=X", "🔴 USD/JPY": "USDJPY=X",
+    "🇨🇦 USDCAD": "USDCAD=X", "🇦🇺 AUD/USD": "AUDUSD=X", "🇨🇭 USD/CHF": "USDCHF=X",
     "🇳🇿 NZDUSD": "NZDUSD=X", "🇪🇺 EUR/GBP": "EURGBP=X", "🇯🇵 EUR/JPY": "EURJPY=X", 
     "🇬🇧 GBPJPY": "GBPJPY=X", "🇨🇦 EUR/CAD": "EURCAD=X", "🇨🇦 GBP/CAD": "GBPCAD=X", 
     "🇦🇺 AUDJPY": "AUDJPY=X", "🇯🇵 CAD/JPY": "CADJPY=X", "🇨🇭 CHF/JPY": "CHFJPY=X", 
