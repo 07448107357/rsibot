@@ -8,18 +8,18 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 # ==================== موسوعة الأصول المزودة بالألوان والرموز ====================
 FOREX_PAIRS = {
-    "🟢 EUR/USD": "EURUSD=X", "🔵 GBP/USD": "GBPUSD=X", "🔴 USD/JPY": "JPY=X", 
-    "🇨🇦 USD/CAD": "CAD=X", "🇦🇺 AUD/USD": "AUDUSD=X", "🇨🇭 USD/CHF": "CHF=X", 
-    "🇳🇿 NZD/USD": "NZDUSD=X", "🇪🇺 EUR/GBP": "EURGBP=X", "🇯🇵 EUR/JPY": "EURJPY=X", 
-    "🇬🇧 GBP/JPY": "GBPJPY=X", "🇨🇦 EUR/CAD": "EURCAD=X", "🇨🇦 GBP/CAD": "GBPCAD=X", 
-    "🇦🇺 AUD/JPY": "AUDJPY=X", "🇯🇵 CAD/JPY": "CADJPY=X", "🇨🇭 CHF/JPY": "CHFJPY=X", 
-    "🇦🇺 EUR/AUD": "EURAUD=X", "🇳🇿 EUR/NZD": "EURNZD=X", "🇦🇺 GBP/AUD": "GBPAUD=X",
-    "🇳🇿 GBP/NZD": "GBPNZD=X", "🇨🇭 AUD/CHF": "AUDCHF=X", "🇨🇦 AUD/CAD": "AUDCAD=X",
-    "🇳🇿 AUD/NZD": "AUDNZD=X", "🇨🇭 CAD/CHF": "CADCHF=X", "🇸🇬 USD/SGD": "USDSGD=X"
+    "🟢 EURUSD": "EURUSD=X", "🔵 GBP/USD": "GBPUSD=X", "🔴 USD/JPY": "JPY=X", 
+    "🇨🇦 USDCAD": "CAD=X", "🇦🇺 AUD/USD": "AUDUSD=X", "🇨🇭 USD/CHF": "CHF=X", 
+    "🇳🇿 NZDUSD": "NZDUSD=X", "🇪🇺 EUR/GBP": "EURGBP=X", "🇯🇵 EUR/JPY": "EURJPY=X", 
+    "🇬🇧 GBPJPY": "GBPJPY=X", "🇨🇦 EUR/CAD": "EURCAD=X", "🇨🇦 GBP/CAD": "GBPCAD=X", 
+    "🇦🇺 AUDJPY": "AUDJPY=X", "🇯🇵 CAD/JPY": "CADJPY=X", "🇨🇭 CHF/JPY": "CHFJPY=X", 
+    "🇦🇺 EURAUD": "EURAUD=X", "🇳🇿 EUR/NZD": "EURNZD=X", "🇦🇺 GBP/AUD": "GBPAUD=X",
+    "🇳🇿 GBPNZD": "GBPNZD=X", "🇨🇭 AUD/CHF": "AUDCHF=X", "🇨🇦 AUD/CAD": "AUDCAD=X",
+    "🇳🇿 AUDNZD": "AUDNZD=X", "🇨🇭 CAD/CHF": "CADCHF=X", "🇸🇬 USD/SGD": "USDSGD=X"
 }
 
 STOCKS = {
-    "🍏 Apple": "AAPL", "🚗 Tesla": "TSLA", "🟩 NVIDIA": "NVDA", "📦 Amazon": "AMZN",
+    "🍏 Apple": "AAPL", "🚗 TeslA": "TSLA", "🟩 NVIDIA": "NVDA", "📦 Amazon": "AMZN",
     "🪟 Microsoft": "MSFT", "🎬 Netflix": "NFLX", "🔍 Google": "GOOGL", "♾️ Meta": "META",
     "🔴 AMD": "AMD", "🔵 Intel": "INTC"
 }
