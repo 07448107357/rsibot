@@ -88,7 +88,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
     tf_info = TIMEFRAME_MAP.get(tf_key, TIMEFRAME_MAP["5m"])
     df = yf.download(tickers=ticker, period=tf_info["period"], interval=tf_info["interval"], progress=False)
     if df.empty or len(df) < 20:
-        return {"error": f"البيانات غير متوفرة حالياً لـ {symbol_key}"}
+            return {"error": f"البيانات غير متوفرة حالياً لـ {symbol_key}"}
 
     if isinstance(df.columns, pd.MultiIndex):
         close = df['Close'][ticker].dropna()
