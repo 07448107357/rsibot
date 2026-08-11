@@ -187,7 +187,7 @@ async def auto_alert_checker(app: Application):
             await asyncio.sleep(60)
             for symbol in watchlist:
                 res = analyze_asset(symbol, "5m")
-                        if res and isinstance(res, dict) and "price" in res:         
+                if res and isinstance(res, dict) and "price" in res:         
                     alert_msg = (
                         f"🔔 **تنبيه إشارة فرصة قوية!** 🔔\n"
                         f"───────────────────\n"
