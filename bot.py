@@ -296,8 +296,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"⏱️ **الإطار الزمني:** {res['tf_label']}\n"
             f"💵 **السعر الحالي:** `{res['price']}`\n"
             f"📈 **مؤشر RSI:** `{res['rsi']}`\n"
-            f"📈 **مؤشر RSI:** `{res['rsi']}`\n"
-            f"📊 **مؤشر بولينجر:** `{res['bb_status']}`\n"
             f"📊 **مؤشر بولينجر:** `{res['bb_status']}`\n"  
             f"🎯 **التوصية النهائية:**\n"
             f"{res['signal_emoji']} **{res['signal_text']}**\n\n"
