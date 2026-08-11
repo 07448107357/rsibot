@@ -186,7 +186,8 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
 
 # ==================== المنبه التلقائي ====================
 async def auto_alert_checker(app: Application):
-    async def auto_alert_checker(app: Application):
+        # ================== المنبه التلقائي ==================
+async def auto_alert_checker(app: Application):
     watchlist = ["🟢 EURUSD", "🔵 GBPUSD", "🟡 الذهب (Gold)", "⚪ الفضة (Silver)", "🟠 Bitcoin", "🟩 NVIDIA", "🚗 TeslA", "🍏 Apple"]
     while True:
         try:
@@ -195,6 +196,7 @@ async def auto_alert_checker(app: Application):
                 symbol = SYMBOL_MAP.get(item, item)
                 res = analyze_asset(symbol, "5m")
                 if res and isinstance(res, dict) and "price" in res:
+                    
                     
                     alert_msg = (
                         f"🔔 **تنبيه إشارة فرصة قوية!** 🔔\n"
