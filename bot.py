@@ -186,7 +186,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
 
 # ==================== المنبه التلقائي ====================
 async def auto_alert_checker(app: Application):
-    watchlist = ["🟢 EUR/USD", "🔵 GBP/USD", "🟡 الذهب (Gold)", "⚪ الفضة (Silver)", "🟠 Bitcoin", "🟩 NVIDIA", "🚗 Tesla", "🍏 Apple"]
+        watchlist = ["🟢 EURUSD", "🔵 GBP/USD", "🟡 الذهب (Gold)", "⚪ الفضة (Silver)", "🟠 Bitcoin", "🟩 NVIDIA", "🚗 TeslA", "🍏 Apple"]
     while True:
         try:
             await asyncio.sleep(60)
@@ -275,7 +275,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(title, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
 
     elif data.startswith("select_"):
-        symbol = data.split("select_")[1]
+        raw_symbol = data.split("select_")[1]
+symbol = SYMBOL_MAP.get(raw_symbol, raw_symbol)
         keyboard = [
             [
                 InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"tf_{symbol}_1m"),
