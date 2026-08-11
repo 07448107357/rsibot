@@ -187,7 +187,7 @@ async def auto_alert_checker(app: Application):
             await asyncio.sleep(60)
             for symbol in watchlist:
                 res = analyze_asset(symbol, "5m")
-                if "error" not in res and res:
+                        if res and isinstance(res, dict) and "price" in res:         
                     alert_msg = (
                         f"🔔 **تنبيه إشارة فرصة قوية!** 🔔\n"
                         f"───────────────────\n"
@@ -286,7 +286,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(f"⏳ جاري تحليل {symbol} وحساب المؤشرات الحية...")
         res = analyze_asset(symbol, tf)
 
-        if "error" in res:
+        if not res or not isinstance(res, dict) or "error" in res:
             await query.message.edit_text(f"❌ {res['error']}")
             return
 
