@@ -158,8 +158,8 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
            tp_buy = round(last_price + (last_atr * 2.0), decimals)
            sl_sell = round(last_price + (last_atr * 1.5), decimals)
            tp_sell = round(last_price - (last_atr * 2.0), decimals)
-      else:
-          return None
+       else:
+           return None
         
 
     return {
