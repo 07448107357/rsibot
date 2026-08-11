@@ -169,11 +169,12 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             "ema_status": "صاعد (Above EMA)" if last_price > last_ema else "هابط (Below EMA)",
             "signal_text": signal_text,
             "signal_emoji": signal_emoji,
-            "sl_buy": sl_buy, "tp_buy": tp_buy,
+                        "sl_buy": sl_buy, "tp_buy": tp_buy,
             "sl_sell": sl_sell, "tp_sell": tp_sell
         }
-        except Exception as e:
-            return {"error": f"Error during analysis: {str(e)}"}
+    except Exception as e:
+        return {"error": f"Error during analysis: {str(e)}"}
+        
     
         
         
