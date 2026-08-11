@@ -169,8 +169,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
                         "sl_buy": sl_buy, "tp_buy": tp_buy,
             "sl_sell": sl_sell, "tp_sell": tp_sell
         }
-    except Exception as e:
-        return {"error": f"Error during analysis: {str(e)}"}
+    
                 
         
         
