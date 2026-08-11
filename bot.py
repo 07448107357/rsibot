@@ -276,7 +276,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("select_"):
         raw_symbol = data.split("select_")[1]
-symbol = SYMBOL_MAP.get(raw_symbol, raw_symbol)
+        symbol = SYMBOL_MAP.get(raw_symbol, raw_symbol)
         keyboard = [
             [
                 InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"tf_{symbol}_1m"),
