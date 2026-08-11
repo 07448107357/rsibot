@@ -82,6 +82,7 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     true_range = np.max(pd.concat([high_low, high_close, low_close], axis=1), axis=1)
     return true_range.rolling(period).mean()
 
+# ==================== تحليل فني محسن بمؤشر بولينجر ====================
 def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
     ticker = SYMBOL_MAP.get(symbol_key, symbol_key)
     tf_info = TIMEFRAME_MAP.get(tf_key, TIMEFRAME_MAP["5m"])
@@ -89,7 +90,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
     try:
         df = yf.download(tickers=ticker, period=tf_info["period"], interval=tf_info["interval"], progress=False)
         if df.empty or len(df) < 20:
-            return {"error": f"السوق مغلق حالياً أو البيانات غير متوفرة لـ {symbol_key}."}
+            return {"error": f"البيانات غير متوفرة حالياً لـ {symbol_key}."}
 
         if isinstance(df.columns, pd.MultiIndex):
             close = df['Close'][ticker].dropna()
@@ -100,13 +101,9 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             high = df['High'].dropna()
             low = df['Low'].dropna()
 
-        if len(close) < 20:
-            return {"error": "بيانات غير كافية للتحليل الفني."}
-
         rsi = calculate_rsi(close, 14)
         upper_band, lower_band, sma20 = calculate_bollinger_bands(close, 20, 2)
         macd, macd_sig, macd_hist = calculate_macd(close)
-        stoch_k, stoch_d = calculate_stochastic(high, low, close)
         ema50 = close.ewm(span=50, adjust=False).mean()
         atr = calculate_atr(pd.DataFrame({'High': high, 'Low': low, 'Close': close}), 14)
 
@@ -118,61 +115,66 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         last_upper = round(float(upper_band.fillna(last_price).iloc[-1]), decimals)
         last_lower = round(float(lower_band.fillna(last_price).iloc[-1]), decimals)
         last_ema = round(float(ema50.iloc[-1]), decimals)
-        last_macd_hist = float(macd_hist.fillna(0).iloc[-1])
-        last_stoch_k = round(float(stoch_k.fillna(50).iloc[-1]), 2)
         last_atr = float(atr.fillna(0).iloc[-1]) or (last_price * 0.0015)
+
+        # تحديد وضع بولينجر بالتفصيل
+        if last_price <= last_lower:
+            bb_status = "اختراق الحد السفلي (تشبع بيعي قوي) 🟢"
+            bb_signal = "BUY"
+        elif last_price >= last_upper:
+            bb_status = "اختراق الحد العلوي (تشبع شرائي قوي) 🔴"
+            bb_signal = "SELL"
+        else:
+            bb_status = "داخل نطاق بولينجر ↔️"
+            bb_signal = "NEUTRAL"
+
+        # حساب النقاط واعتماد بولينجر كفلتر أساسي
+        buy_score = 0
+        sell_score = 0
+
+        # نقاط Bollinger Bands (وزن أعلى)
+        if bb_signal == "BUY": buy_score += 3
+        elif bb_signal == "SELL": sell_score += 3
+
+        # نقاط RSI
+        if last_rsi <= 35: buy_score += 2
+        elif last_rsi >= 65: sell_score += 2
+
+        # نقاط الاتجاه EMA
+        if last_price > last_ema: buy_score += 1
+        else: sell_score += 1
+
+        # قرار التوصية النهائي
+        if buy_score >= 4:
+            signal_text = "إشارة شراء قوية (BUY)"
+            signal_emoji = "🟢"
+        elif sell_score >= 4:
+            signal_text = "إشارة بيع قوية (SELL)"
+            signal_emoji = "🔴"
+        else:
+            signal_text = "حالة محايدة - انتظار فرصة مؤكدة (Wait)"
+            signal_emoji = "⚪"
 
         sl_buy = round(last_price - (last_atr * 1.5), decimals)
         tp_buy = round(last_price + (last_atr * 2.5), decimals)
         sl_sell = round(last_price + (last_atr * 1.5), decimals)
         tp_sell = round(last_price - (last_atr * 2.5), decimals)
 
-        buy_score = 0
-        sell_score = 0
-
-        if last_rsi < 40: buy_score += 2
-        elif last_rsi > 60: sell_score += 2
-
-        if last_stoch_k < 35: buy_score += 2
-        elif last_stoch_k > 65: sell_score += 2
-
-        if last_price <= last_lower: buy_score += 2
-        elif last_price >= last_upper: sell_score += 2
-
-        if last_price > last_ema: buy_score += 1
-        else: sell_score += 1
-
-        if last_macd_hist > 0: buy_score += 1
-        else: sell_score += 1
-
-        if buy_score >= 4 and buy_score > sell_score:
-            signal = "BUY"
-            signal_text = "إشارة شراء (BUY)"
-            signal_emoji = "🟢"
-        elif sell_score >= 4 and sell_score > buy_score:
-            signal = "SELL"
-            signal_text = "إشارة بيع (SELL)"
-            signal_emoji = "🔴"
-        else:
-            signal = "WAIT"
-            signal_text = "حالة محايدة - انتظار فرصة أفضل (Wait)"
-            signal_emoji = "⚪"
-
         return {
             "symbol": symbol_key,
             "tf_label": tf_info["label"],
             "price": last_price,
             "rsi": last_rsi,
-            "stoch": last_stoch_k,
-            "macd_status": "إيجابي 🟢" if last_macd_hist > 0 else "سلبي 🔴",
-            "signal": signal,
+            "bb_status": bb_status,
+            "ema_status": "صاعد (Above EMA)" if last_price > last_ema else "هابط (Below EMA)",
             "signal_text": signal_text,
             "signal_emoji": signal_emoji,
             "sl_buy": sl_buy, "tp_buy": tp_buy,
             "sl_sell": sl_sell, "tp_sell": tp_sell
         }
     except Exception as e:
-        return {"error": f"حدث خطأ أثناء قراءة البيانات: {str(e)}"}
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+        
 
 # ==================== المنبه التلقائي ====================
 async def auto_alert_checker(app: Application):
