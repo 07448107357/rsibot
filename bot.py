@@ -291,7 +291,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(f"⏰ اختر الإطار الزمني لـ ({symbol}):", reply_markup=InlineKeyboardMarkup(keyboard))
 
     elif data.startswith("tf_"):
-        _, symbol, tf = data.split("_")
+        _, raw_symbol, tf = data.split("_", 2)
+        symbol = SYMBOL_MAP.get(raw_symbol, raw_symbol)
         await query.message.edit_text(f"⏳ جاري تحليل {symbol} وحساب المؤشرات الحية...")
         res = analyze_asset(symbol, tf)
 
