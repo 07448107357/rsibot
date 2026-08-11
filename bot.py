@@ -153,7 +153,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             signal_text = "حالة محايدة - انتظار فرصة مؤكدة (Wait)"
             signal_emoji = "⚪"
 
-   if last_price is not None and last_atr is not None:
+        if last_price is not None and last_atr is not None:
         sl_buy = round(last_price - (last_atr * 1.5), decimals)
         tp_buy = round(last_price + (last_atr * 2.0), decimals)
         sl_sell = round(last_price + (last_atr * 1.5), decimals)
