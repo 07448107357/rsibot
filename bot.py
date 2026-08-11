@@ -154,26 +154,26 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
             signal_emoji = "⚪"
 
         if last_price is not None and last_atr is not None:
-           sl_buy = round(last_price - (last_atr * 1.5), decimals)
-           tp_buy = round(last_price + (last_atr * 2.0), decimals)
-           sl_sell = round(last_price + (last_atr * 1.5), decimals)
-           tp_sell = round(last_price - (last_atr * 2.0), decimals)
-        else:
-           return None
-        
+        sl_buy = round(last_price - (last_atr * 1.5), decimals)
+        tp_buy = round(last_price + (last_atr * 2.0), decimals)
+        sl_sell = round(last_price + (last_atr * 1.5), decimals)
+        tp_sell = round(last_price - (last_atr * 2.0), decimals)
 
-    return {
-        "symbol": symbol_key,
-        "tf_label": tf_info["label"],
-        "price": last_price,
-        "rsi": last_rsi,
-        "bb_status": bb_status,
-        "ema_status": "صاعد (Above EMA)" if last_price > last_ema else "هابط (Below EMA)",
-        "signal_text": signal_text,
-        "signal_emoji": signal_emoji,
-        "sl_buy": sl_buy, "tp_buy": tp_buy,
-        "sl_sell": sl_sell, "tp_sell": tp_sell
-    }
+        return {
+            "symbol": symbol_key,
+            "tf_label": tf_info["label"],
+            "price": last_price,
+            "rsi": last_rsi,
+            "bb_status": bb_status,
+            "ema_status": "صاعد (Above EMA)" if last_price > last_ema else "هابط (Below EMA)",
+            "signal_text": signal_text,
+            "signal_emoji": signal_emoji,
+            "sl_buy": sl_buy, "tp_buy": tp_buy,
+            "sl_sell": sl_sell, "tp_sell": tp_sell
+        }
+    else:
+        return None
+        
     
     
     
