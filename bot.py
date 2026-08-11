@@ -86,12 +86,9 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
 def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
     ticker = SYMBOL_MAP.get(symbol_key, symbol_key)
     tf_info = TIMEFRAME_MAP.get(tf_key, TIMEFRAME_MAP["5m"])
-    
-    try:
-        df = yf.download(tickers=ticker, period=tf_info["period"], interval=tf_info["interval"], progress=False)
-        if df.empty or len(df) < 20:
-            return {"error": f"البيانات غير متوفرة حالياً لـ {symbol_key}."}
-
+    df = yf.download(tickers=ticker, period=tf_info["period"], interval=tf_info["interval"], progress=False)
+    if df.empty or len(df) < 20:
+        return {"error": f"البيانات غير متوفرة حالياً لـ {symbol_key}"
         if isinstance(df.columns, pd.MultiIndex):
             close = df['Close'][ticker].dropna()
             high = df['High'][ticker].dropna()
@@ -174,9 +171,7 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         }
     except Exception as e:
         return {"error": f"Error during analysis: {str(e)}"}
-        
-    
-        
+                
         
         
 
