@@ -91,12 +91,14 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
         return {"error": f"البيانات غير متوفرة حالياً لـ {symbol_key}"}
 
     if isinstance(df.columns, pd.MultiIndex):
+        close = df['Close'][ticker].dropna()
+        high = df['High'][ticker].dropna()
+        low = df['Low'][ticker].dropna()
+    else:
+        close = df['Close'].dropna()
+        high = df['High'].dropna()
+        low = df['Low'].dropna()
         
-        else:
-            close = df['Close'].dropna()
-            high = df['High'].dropna()
-            low = df['Low'].dropna()
-
         rsi = calculate_rsi(close, 14)
         upper_band, lower_band, sma20 = calculate_bollinger_bands(close, 20, 2)
         macd, macd_sig, macd_hist = calculate_macd(close)
