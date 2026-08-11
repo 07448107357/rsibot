@@ -289,7 +289,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not res or not isinstance(res, dict) or "error" in res:
                     err_msg = res.get('error', 'فشل جلب البيانات') if isinstance(res, dict) else 'فشل جلب البيانات'
         await query.message.edit_text(f"❌ {err_msg}")
-            return
+        return
 
         msg = (
             f"📊 **تحليل فني متكامل لـ {res['symbol']}**\n"
