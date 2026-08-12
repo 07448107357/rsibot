@@ -53,16 +53,12 @@ ITEMS_PER_PAGE = 6
 # ==========================================
 def analyze_market_advanced(ticker_symbol, interval="5m"):
     try:
-        # زيادة الفترة الزمنية المجلوبة لضمان توفر الشموع دائماً
-period = "5d" if interval in ["1m", "2m", "5m", "15m"] else "1mo"
+        # جلب البيانات بحسب الفريم الزمني مع فترة أوسع
+        period = "5d" if interval in ["1m", "2m", "5m", "15m"] else "1mo"
+        data = yf.download(tickers=ticker_symbol, period=period, interval=interval, progress=False)
 
-# تقليل شرط الحد الأدنى للشموع من 30 إلى 15 شمعة
-if data.empty or len(data) < 15:
-    return None, "لا توجد بيانات كافية حالياً (قد يكون السوق مغلقاً)."
-    
-
-        if data.empty or len(data) < 30:
-            return None, "لا توجد بيانات كافية للتحليل حالياً."
+        if data.empty or len(data) < 15:
+            return None, "لا توجد بيانات كافية حالياً (قد يكون السوق مغلقاً)."
 
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
@@ -155,6 +151,7 @@ if data.empty or len(data) < 15:
 
     except Exception as e:
         return None, f"خطأ أثناء التحليل: {str(e)}"
+        
 
 # ==========================================
 # 3. لوحة الأزرار والأوامر
