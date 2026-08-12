@@ -26,17 +26,15 @@ STOCKS = {
 }
 
 COMMODITIES = {
-    "🟡 الذهب (Gold)": "GC=F", 
-    "⚪ الفضة (Silver)": "SI=F", 
-    "🛢️ النفط الخام (Oil)": "CL=F",
-    "🔥 الغاز الطبيعي (Gas)": "NG=F",
-    "🥉 النحاس (Copper)": "HG=F"
+    "🥇 Gold": "GC=F", "🛢️ Oil": "CL=F", "🥈 Silver": "SI=F"
 }
 
 CRYPTO = {
-    "🟠 Bitcoin": "BTC-USD", "🟣 Ethereum": "ETH-USD", "🟢 Solana": "SOL-USD",
-    "🔵 XRP": "XRP-USD", "🟡 Binance Coin": "BNB-USD", "🔴 Cardano": "ADA-USD"
+    "🔵 XRP": "XRP-USD", "🟡 BNB": "BNB-USD", "🔴 ADA": "ADA-USD"
 }
+
+
+
 
 SYMBOL_MAP = {**FOREX_PAIRS, **STOCKS, **COMMODITIES, **CRYPTO}
 
