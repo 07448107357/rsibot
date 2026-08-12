@@ -227,16 +227,15 @@ def build_menu_keyboard(user_id: int):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id if update.effective_chat else None
-
     reply_markup = build_menu_keyboard(chat_id)
-    welcome_msg = (
-        "👋 **مرحباً بك في بوت التداول الفني المتقدم**\n\n"
-        "اختر القسم الذي تريد استعراض أصوله للتحليل اللحظي المباشر:"
-    )
+    welcome_msg = "مرحباً بك في بوت التداول الفني المتقدم 👋\n\nاختر القسم الذي تريد استعراض أصوله للتحليل اللحظي المباشر:"
+    
     if update.message:
-        await update.message.reply_text(welcome_msg, parse_mode="Markdown", reply_markup=reply_markup)
+        await update.message.reply_text(welcome_msg, reply_markup=reply_markup)
     elif update.callback_query:
-        await update.callback_query.message.edit_text(welcome_msg, parse_mode="Markdown", reply_markup=reply_markup)
+        await update.callback_query.answer()
+        await update.callback_query.message.reply_text(welcome_msg, reply_markup=reply_markup)
+        
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
