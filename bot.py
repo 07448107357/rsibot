@@ -11,12 +11,33 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # ==========================================
 # 1. موسوعة الأصول المالية الشاملة
 # ==========================================
+# ==========================================
+# 1. موسوعة الأصول المالية الشاملة (جميع أزواج الفوركس)
+# ==========================================
 ASSETS = {
     "forex": [
-        ("EUR/USD 💶", "EURUSD=X"), ("GBP/USD 💷", "GBPUSD=X"), ("USD/JPY 💴", "USDJPY=X"),
-        ("AUD/USD 🇦🇺", "AUDUSD=X"), ("USD/CAD 🇨🇦", "USDCAD=X"), ("USD/CHF 🇨🇭", "USDCHF=X"),
-        ("NZD/USD 🇳🇿", "NZDUSD=X"), ("EUR/GBP 🇪🇺", "EURGBP=X"), ("EUR/JPY 🇪🇺", "EURJPY=X"),
-        ("GBP/JPY 🇬🇧", "GBPJPY=X"), ("AUD/JPY 🇦🇺", "AUDJPY=X"), ("EUR/AUD 🇪🇺", "EURAUD=X")
+        # الأزواج الرئيسية (Majors)
+        ("EUR/USD 🇪🇺🇺🇸", "EURUSD=X"), ("GBP/USD 🇬🇧🇺🇸", "GBPUSD=X"), 
+        ("USD/JPY 🇺🇸🇯🇵", "USDJPY=X"), ("AUD/USD 🇦🇺🇺🇸", "AUDUSD=X"), 
+        ("USD/CAD 🇺🇸🇨🇦", "USDCAD=X"), ("USD/CHF 🇺🇸🇨🇭", "USDCHF=X"), 
+        ("NZD/USD 🇳🇿🇺🇸", "NZDUSD=X"),
+
+        # تقاطعات اليورو (Euro Crosses)
+        ("EUR/GBP 🇪🇺🇬🇧", "EURGBP=X"), ("EUR/JPY 🇪🇺🇯🇵", "EURJPY=X"), 
+        ("EUR/AUD 🇪🇺🇦🇺", "EURAUD=X"), ("EUR/CAD 🇪🇺🇨🇦", "EURCAD=X"), 
+        ("EUR/CHF 🇪🇺🇨🇭", "EURCHF=X"), ("EUR/NZD 🇪🇺🇳🇿", "EURNZD=X"),
+
+        # تقاطعات الباوند (GBP Crosses)
+        ("GBP/JPY 🇬🇧🇯🇵", "GBPJPY=X"), ("GBP/AUD 🇬🇧🇦🇺", "GBPAUD=X"), 
+        ("GBP/CAD 🇬🇧🇨🇦", "GBPCAD=X"), ("GBP/CHF 🇬🇧🇨🇭", "GBPCHF=X"), 
+        ("GBP/NZD 🇬🇧🇳🇿", "GBPNZD=X"),
+
+        # تقاطعات الين والعملات الأخرى (Other Crosses)
+        ("AUD/JPY 🇦🇺🇯🇵", "AUDJPY=X"), ("NZD/JPY 🇳🇿🇯🇵", "NZDJPY=X"), 
+        ("CAD/JPY 🇨🇦🇯🇵", "CADJPY=X"), ("CHF/JPY 🇨🇭🇯🇵", "CHFJPY=X"), 
+        ("AUD/CAD 🇦🇺🇨🇦", "AUDCAD=X"), ("AUD/CHF 🇦🇺🇨🇭", "AUDCHF=X"), 
+        ("AUD/NZD 🇦🇺🇳🇿", "AUDNZD=X"), ("NZD/CAD 🇳🇿🇨🇦", "NZDCAD=X"), 
+        ("NZD/CHF 🇳🇿🇨🇭", "NZDCHF=X"), ("CAD/CHF 🇨🇦🇨🇭", "CADCHF=X")
     ],
     "crypto": [
         ("Bitcoin 🟠", "BTC-USD"), ("Ethereum 🔷", "ETH-USD"), ("Solana 🟣", "SOL-USD"),
@@ -36,6 +57,7 @@ ASSETS = {
         ("مؤشر S&P 500 📈", "^GSPC"), ("مؤشر Nasdaq 📊", "^IXIC"), ("مؤشر Dow Jones 🏛️", "^DJI")
     ]
 }
+
 
 ITEMS_PER_PAGE = 6
 
