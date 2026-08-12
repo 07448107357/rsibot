@@ -185,7 +185,8 @@ def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
 
 # ================== المنبه التلقائي ==================
 async def auto_alert_checker(app: Application):
-    watchlist = ["🟢 EURUSD", "🔵 GBPUSD", "🟡 الذهب (Gold)", "⚪ الفضة (Silver)", "🟠 Bitcoin", "🟩 NVIDIA", "🚗 TeslA", "🍏 Apple"]
+    watchlist = ["EURUSD=X", "GBPUSD=X", "GC=F", "SI=F", "BTC-USD"]
+    
     while True:
         try:
             await asyncio.sleep(300)
