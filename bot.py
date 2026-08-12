@@ -53,9 +53,13 @@ ITEMS_PER_PAGE = 6
 # ==========================================
 def analyze_market_advanced(ticker_symbol, interval="5m"):
     try:
-        # جلب البيانات بحسب الفريم الزمني
-        period = "1d" if interval in ["1m", "2m", "5m", "15m"] else "5d"
-        data = yf.download(tickers=ticker_symbol, period=period, interval=interval, progress=False)
+        # زيادة الفترة الزمنية المجلوبة لضمان توفر الشموع دائماً
+period = "5d" if interval in ["1m", "2m", "5m", "15m"] else "1mo"
+
+# تقليل شرط الحد الأدنى للشموع من 30 إلى 15 شمعة
+if data.empty or len(data) < 15:
+    return None, "لا توجد بيانات كافية حالياً (قد يكون السوق مغلقاً)."
+    
 
         if data.empty or len(data) < 30:
             return None, "لا توجد بيانات كافية للتحليل حالياً."
