@@ -328,10 +328,22 @@ def main():
     if not token:
         return
 
-    app = Application.builder().token(token).post_init(post_init).build()
+    app = (
+        Application.builder()
+        .token(token)
+        .post_init(post_init)
+        .read_timeout(30)
+        .write_timeout(30)
+        .connect_timeout(30)
+        .pool_timeout(30)
+        .build()
+    )
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_click))
     app.run_polling()
+    
+    
 
 if __name__ == "__main__":
     main()
