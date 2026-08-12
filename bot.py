@@ -1,352 +1,204 @@
 import os
+import logging
+import asyncio
 import yfinance as yf
 import pandas as pd
-import numpy as np
-import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# ==================== موسوعة الأصول المزودة بالألوان والرموز ====================
-FOREX_PAIRS = {
-    "🟢 EURUSD": "EURUSD=X", "🔵 GBPUSD": "GBPUSD=X", "🔴 USDJPY": "USDJPY=X",
-    "🇨🇦 USDCAD": "USDCAD=X", "🇦🇺 AUDUSD": "AUDUSD=X", "🇨🇭 USDCHF": "USDCHF=X",
-    "🇳🇿 NZDUSD": "NZDUSD=X", "🇪🇺 EURGBP": "EURGBP=X", "🇯🇵 EURJPY": "EURJPY=X",
-    "🇬🇧 GBPJPY": "GBPJPY=X", "🇨🇦 EURCAD": "EURCAD=X", "🇨🇦 GBPCAD": "GBPCAD=X",
-    "🇦🇺 AUDJPY": "AUDJPY=X", "🇯🇵 CADJPY": "CADJPY=X", "🇨🇭 CHFJPY": "CHFJPY=X",
-    "🇦🇺 EURAUD": "EURAUD=X", "🇳🇿 EURNZD": "EURNZD=X", "🇦🇺 GBPAUD": "GBPAUD=X",
-    "🇳🇿 GBPNZD": "GBPNZD=X", "🇨🇭 AUDCHF": "AUDCHF=X", "🇨🇦 AUDCAD": "AUDCAD=X",
-    "🇳🇿 AUDNZD": "AUDNZD=X", "🇨🇭 CADCHF": "CADCHF=X", "🇸🇬 USDSGD": "USDSGD=X"
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# ==========================================
+# 1. موسوعة الأصول المالية الشاملة
+# ==========================================
+ASSETS = {
+    "forex": [
+        ("EUR/USD 💶", "EURUSD=X"), ("GBP/USD 💷", "GBPUSD=X"), ("USD/JPY 💴", "USDJPY=X"),
+        ("AUD/USD 🇦🇺", "AUDUSD=X"), ("USD/CAD 🇨🇦", "USDCAD=X"), ("USD/CHF 🇨🇭", "USDCHF=X"),
+        ("NZD/USD 🇳🇿", "NZDUSD=X"), ("EUR/GBP 🇪🇺", "EURGBP=X"), ("EUR/JPY 🇪🇺", "EURJPY=X"),
+        ("GBP/JPY 🇬🇧", "GBPJPY=X"), ("AUD/JPY 🇦🇺", "AUDJPY=X"), ("EUR/AUD 🇪🇺", "EURAUD=X")
+    ],
+    "crypto": [
+        ("Bitcoin 🟠", "BTC-USD"), ("Ethereum 🔷", "ETH-USD"), ("Solana 🟣", "SOL-USD"),
+        ("Binance Coin 🟡", "BNB-USD"), ("Ripple 🪙", "XRP-USD"), ("Cardano 🔵", "ADA-USD"),
+        ("Dogecoin 🐕", "DOGE-USD"), ("Avalanche 🔺", "AVAX-USD"), ("TRON 🔴", "TRX-USD"),
+        ("Link 🔗", "LINK-USD"), ("SUI 💧", "SUI-USD"), ("PEPE 🐸", "PEPE-USD")
+    ],
+    "commodities": [
+        ("الذهب 🟡 (Gold)", "GC=F"), ("الفضة ⚪ (Silver)", "SI=F"), ("النفط الخام 🛢️ (WTI)", "CL=F"),
+        ("نفط برنت 🛢️ (Brent)", "BZ=F"), ("الغاز الطبيعي 🔥 (Gas)", "NG=F"), ("النحاس 🟠 (Copper)", "HG=F"),
+        ("البلاتين ⚪ (Platinum)", "PL=F"), ("البلاديوم 🔘 (Palladium)", "PA=F")
+    ],
+    "stocks": [
+        ("Apple 🍏", "AAPL"), ("Tesla 🚗", "TSLA"), ("Nvidia 🟢", "NVDA"),
+        ("Microsoft 💻", "MSFT"), ("Amazon 📦", "AMZN"), ("Google 🌐", "GOOGL"),
+        ("Meta ♾️", "META"), ("AMD 🟥", "AMD"), ("Netflix 🍿", "NFLX"),
+        ("مؤشر S&P 500 📈", "^GSPC"), ("مؤشر Nasdaq 📊", "^IXIC"), ("مؤشر Dow Jones 🏛️", "^DJI")
+    ]
 }
 
+ITEMS_PER_PAGE = 6
 
-STOCKS = {
-    "🍏 Apple": "AAPL", "🚗 TeslA": "TSLA", "🟩 NVIDIA": "NVDA", "📦 Amazon": "AMZN",
-    "🪟 Microsoft": "MSFT", "🎬 Netflix": "NFLX", "🔍 Google": "GOOGL", "♾️ Meta": "META",
-    "🔴 AMD": "AMD", "🔵 Intel": "INTC"
-}
-
-COMMODITIES = {
-    "🥇 Gold": "GC=F", "🛢️ Oil": "CL=F", "🥈 Silver": "SI=F"
-}
-
-CRYPTO = {
-    "🔵 XRP": "XRP-USD", "🟡 BNB": "BNB-USD", "🔴 ADA": "ADA-USD"
-}
-
-
-
-
-SYMBOL_MAP = {**FOREX_PAIRS, **STOCKS, **COMMODITIES, **CRYPTO}
-
-TIMEFRAME_MAP = {
-    "1m": {"interval": "1m", "period": "1d", "label": "دقيقة واحدة (1m)"},
-    "5m": {"interval": "5m", "period": "5d", "label": "5 دقائق (5m)"},
-    "15m": {"interval": "15m", "period": "5d", "label": "15 دقيقة (15m)"}
-}
-
-SUBSCRIBED_USERS = set()
-
-# ==================== المؤشرات الفنية ====================
-def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
-
-def calculate_bollinger_bands(series: pd.Series, period: int = 20, std_dev: int = 2):
-    sma = series.rolling(window=period).mean()
-    std = series.rolling(window=period).std()
-    return sma + (std * std_dev), sma - (std * std_dev), sma
-
-def calculate_macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
-    ema_fast = series.ewm(span=fast, adjust=False).mean()
-    ema_slow = series.ewm(span=slow, adjust=False).mean()
-    macd_line = ema_fast - ema_slow
-    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
-    histogram = macd_line - signal_line
-    return macd_line, signal_line, histogram
-
-def calculate_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, k_period: int = 14, d_period: int = 3):
-    lowest_low = low.rolling(window=k_period).min()
-    highest_high = high.rolling(window=k_period).max()
-    k = 100 * ((close - lowest_low) / (highest_high - lowest_low))
-    d = k.rolling(window=d_period).mean()
-    return k, d
-
-def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    high_low = df['High'] - df['Low']
-    high_close = np.abs(df['High'] - df['Close'].shift())
-    low_close = np.abs(df['Low'] - df['Close'].shift())
-    true_range = np.max(pd.concat([high_low, high_close, low_close], axis=1), axis=1)
-    return true_range.rolling(period).mean()
-
-# ==================== تحليل فني محسن بمؤشر بولينجر ====================
-def analyze_asset(symbol_key: str, tf_key: str = "5m") -> dict:
-    ticker = SYMBOL_MAP.get(symbol_key, symbol_key)
-    tf_info = TIMEFRAME_MAP.get(tf_key, TIMEFRAME_MAP["5m"])
-    df = yf.download(tickers=ticker, period=tf_info["period"], interval=tf_info["interval"], progress=False)
-    if df.empty or len(df) < 20:
-                    return {"error": f"Data not available for {symbol_key}"}
-
-    if isinstance(df.columns, pd.MultiIndex):
-        close = df['Close'][ticker].dropna()
-        high = df['High'][ticker].dropna()
-        low = df['Low'][ticker].dropna()
-    else:
-        close = df['Close'].dropna()
-        high = df['High'].dropna()
-        low = df['Low'].dropna()
+# ==========================================
+# 2. محرك التحليل الفني المتقدم
+# ==========================================
+def analyze_asset(symbol, interval="5m"):
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="2d", interval=interval)
         
-        rsi = calculate_rsi(close, 14)
-        upper_band, lower_band, sma20 = calculate_bollinger_bands(close, 20, 2)
-        macd, macd_sig, macd_hist = calculate_macd(close)
-        ema50 = close.ewm(span=50, adjust=False).mean()
-        atr = calculate_atr(pd.DataFrame({'High': high, 'Low': low, 'Close': close}), 14)
-
-        is_forex = "=X" in ticker
-        decimals = 5 if is_forex else 2
-
-        last_price = round(float(close.iloc[-1]), decimals)
-        last_rsi = round(float(rsi.fillna(50).iloc[-1]), 2)
-        last_upper = round(float(upper_band.fillna(last_price).iloc[-1]), decimals)
-        last_lower = round(float(lower_band.fillna(last_price).iloc[-1]), decimals)
-        last_ema = round(float(ema50.iloc[-1]), decimals)
-        last_atr = float(atr.fillna(0).iloc[-1]) or (last_price * 0.0015)
-
-        # تحديد وضع بولينجر بالتفصيل
-        if last_price <= last_lower:
-            bb_status = "اختراق الحد السفلي (تشبع بيعي قوي) 🟢"
-            bb_signal = "BUY"
-        elif last_price >= last_upper:
-            bb_status = "اختراق الحد العلوي (تشبع شرائي قوي) 🔴"
-            bb_signal = "SELL"
-        else:
-            bb_status = "داخل نطاق بولينجر ↔️"
-            bb_signal = "NEUTRAL"
-
-        # حساب النقاط واعتماد بولينجر كفلتر أساسي
-        buy_score = 0
-        sell_score = 0
-
-        # نقاط Bollinger Bands (وزن أعلى)
-        if bb_signal == "BUY": buy_score += 3
-        elif bb_signal == "SELL": sell_score += 3
-
-        # نقاط RSI
-        if last_rsi <= 35: buy_score += 2
-        elif last_rsi >= 65: sell_score += 2
-
-        # نقاط الاتجاه EMA
-        if last_price > last_ema: buy_score += 1
-        else: sell_score += 1
-
-        # قرار التوصية النهائي
-        if buy_score >= 4:
-            signal_text = "إشارة شراء قوية (BUY)"
-            signal_emoji = "🟢"
-        elif sell_score >= 4:
-            signal_text = "إشارة بيع قوية (SELL)"
-            signal_emoji = "🔴"
-        else:
-            signal_text = "حالة محايدة - انتظار فرصة مؤكدة (Wait)"
-            signal_emoji = "⚪"
-
-        if last_price is not None and last_atr is not None:
-            sl_buy = round(last_price - (last_atr * 1.5), decimals)
-            tp_buy = round(last_price + (last_atr * 2.0), decimals)
-            sl_sell = round(last_price + (last_atr * 1.5), decimals)
-            tp_sell = round(last_price - (last_atr * 2.0), decimals)
-
-            return {
-                "symbol": symbol_key,
-                "tf_label": tf_info["label"],
-                "price": last_price,
-                "rsi": last_rsi,
-                "bb_status": bb_status,
-                "ema_status": "صاعد (Above EMA)" if last_price > last_ema else "هابط (Below EMA)",
-                "signal_text": signal_text,
-                "signal_emoji": signal_emoji,
-                "sl_buy": sl_buy, "tp_buy": tp_buy,
-                "sl_sell": sl_sell, "tp_sell": tp_sell
-        }
-        else:
+        if df.empty or len(df) < 25:
             return None
-        
-        
-    
-    
-    
-        
-    
-                
-        
-        
 
-# ================== المنبه التلقائي ==================
-async def auto_alert_checker(app: Application):
-    watchlist = ["EURUSD=X", "GBPUSD=X", "GC=F", "SI=F", "BTC-USD"]
-    
-    while True:
-        try:
-            await asyncio.sleep(300)
-            for item in watchlist:
-                symbol = SYMBOL_MAP.get(item, item)
-                res = analyze_asset(symbol, "5m")
-                if res and isinstance(res, dict) and "price" in res:
-                    
-                    
-                    alert_msg = (
-                        f"🔔 **تنبيه إشارة فرصة قوية!** 🔔\n"
-                        f"───────────────────\n"
-                        f"📊 **الأصل:** {res['symbol']}\n"
-                        f"⏱️ **الإطار:** 5 دقائق\n"
-                        f"💵 **السعر:** `{res['price']}`\n"
-                        f"🎯 **التوصية:** {res['signal_emoji']} **{res['signal_text']}**\n"
-                        f"📈 **RSI:** `{res['rsi']}` | **Stoch:** `{res['stoch']}`\n"
-                        f"📊 **MACD:** {res['macd_status']}\n"
-                        f"───────────────────\n"
-                        f"💡 **TP:** `{res['tp_buy'] if res['signal']=='BUY' else res['tp_sell']}` | **SL:** `{res['sl_buy'] if res['signal']=='BUY' else res['sl_sell']}`"
-                    )
-                    for user_id in list(SUBSCRIBED_USERS):
-                        try:
-                            await app.bot.send_message(chat_id=user_id, text=alert_msg, parse_mode="Markdown")
-                        except Exception:
-                            pass
-        except Exception:
-            await asyncio.sleep(10)
+        close = df['Close']
+        current_price = close.iloc[-1]
 
-# ==================== الأزرار والواجهة ====================
-def build_menu_keyboard(user_id: int):
-    alert_status = "🔔 المنبه: مفعّل" if user_id in SUBSCRIBED_USERS else "🔕 المنبه: معطّل"
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💱 جميع أزواج الفوركس", callback_data="cat_forex"), InlineKeyboardButton("📈 الأسهم العالمية", callback_data="cat_stocks")],
-        [InlineKeyboardButton("🪙 السلع والمعادن", callback_data="cat_commodities"), InlineKeyboardButton("⚡ العملات الرقمية", callback_data="cat_crypto")],
-        [InlineKeyboardButton(f"{alert_status} (اضغط للتغيير)", callback_data="toggle_alerts")]
-    ])
+        # 1. RSI (14)
+        delta = close.diff()
+        gain = (delta.where(delta > 0, 0)).ewm(alpha=1/14, adjust=False).mean()
+        loss = (-delta.where(delta < 0, 0)).ewm(alpha=1/14, adjust=False).mean()
+        rs = gain / loss
+        rsi_val = (100 - (100 / (1 + rs))).iloc[-1]
 
+        # 2. MACD
+        exp1 = close.ewm(span=12, adjust=False).mean()
+        exp2 = close.ewm(span=26, adjust=False).mean()
+        macd = exp1 - exp2
+        signal_line = macd.ewm(span=9, adjust=False).mean()
+        macd_val = macd.iloc[-1]
+        sig_val = signal_line.iloc[-1]
+
+        # 3. Bollinger Bands (20, 2)
+        sma20 = close.rolling(window=20).mean()
+        std20 = close.rolling(window=20).std()
+        upper_band = (sma20 + (std20 * 2)).iloc[-1]
+        lower_band = (sma20 - (std20 * 2)).iloc[-1]
+        middle_band = sma20.iloc[-1]
+
+        # التوصية الفنية
+        if current_price >= upper_band and rsi_val > 70 and macd_val < sig_val:
+            signal = "🔴 بيع قوي (تشبع شرائي + اختراق الباند العلوي)"
+        elif current_price <= lower_band and rsi_val < 30 and macd_val > sig_val:
+            signal = "🟢 شراء قوي (تشبع بيعي + كسر الباند السفلي)"
+        elif rsi_val > 60:
+            signal = "🔴 ميل للهبوط / بيع خفيف"
+        elif rsi_val < 40:
+            signal = "🟢 ميل للصعود / شراء خفيف"
+        else:
+            signal = "⚪ محايد (استقرار السعر داخل النطاق)"
+
+        return {
+            "price": current_price,
+            "rsi": rsi_val,
+            "macd": macd_val,
+            "bb_upper": upper_band,
+            "bb_middle": middle_band,
+            "bb_lower": lower_band,
+            "signal": signal
+        }
+    except Exception as e:
+        logging.error(f"Error analyzing {symbol}: {e}")
+        return None
+
+# ==========================================
+# 3. واجهة التحكم والأزرار التفاعلية
+# ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id if update.effective_chat else None
-    reply_markup = build_menu_keyboard(chat_id)
-    welcome_msg = "مرحباً بك في بوت التداول الفني المتقدم 👋\n\nاختر القسم الذي تريد استعراض أصوله للتحليل اللحظي المباشر:"
+    keyboard = [
+        [InlineKeyboardButton("جميع أزواج الفوركس 💱", callback_data="cat_forex_0"),
+         InlineKeyboardButton("الأسهم والمؤشرات 📈", callback_data="cat_stocks_0")],
+        [InlineKeyboardButton("السلع والمعادن 🌍", callback_data="cat_commodities_0"),
+         InlineKeyboardButton("العملات الرقمية ⚡", callback_data="cat_crypto_0")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    msg = "مرحباً بك في بوت التحليل الفني الشامل للبورصة العالمية 👋\n\nاختر القسم للاستعراض وتحليل الأسعار لحظياً:"
     
     if update.message:
-        await update.message.reply_text(welcome_msg, reply_markup=reply_markup)
+        await update.message.reply_text(msg, reply_markup=reply_markup)
     elif update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.message.reply_text(welcome_msg, reply_markup=reply_markup)
-        
+        await update.callback_query.message.edit_text(msg, reply_markup=reply_markup)
 
-async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-    chat_id = query.message.chat_id
 
-    if data == "toggle_alerts":
-        if chat_id in SUBSCRIBED_USERS:
-            SUBSCRIBED_USERS.remove(chat_id)
-            await query.answer("🔕 تم إيقاف المنبه التلقائي لحسابك.", show_alert=True)
-        else:
-            SUBSCRIBED_USERS.add(chat_id)
-            await query.answer("🔔 تم تفعيل المنبه التلقائي لحسابك!", show_alert=True)
-        await query.message.edit_reply_markup(reply_markup=build_menu_keyboard(chat_id))
-
-    elif data.startswith("cat_"):
-        cat = data.split("cat_")[1]
-        items = {}
-        title = ""
-        if cat == "forex":
-            items, title = FOREX_PAIRS, "💱 قائمة جميع أزواج العملات (24+ زوج):"
-        elif cat == "stocks":
-            items, title = STOCKS, "📈 قائمة الأسهم العالمية:"
-        elif cat == "commodities":
-            items, title = COMMODITIES, "🪙 قائمة السلع والمعادن حية:"
-        elif cat == "crypto":
-            items, title = CRYPTO, "⚡ قائمة العملات الرقمية:"
-
-        buttons = []
-        keys = list(items.keys())
-        for i in range(0, len(keys), 2):
-            row = [InlineKeyboardButton(keys[i], callback_data=f"select_{keys[i]}")]
-            if i + 1 < len(keys):
-                row.append(InlineKeyboardButton(keys[i+1], callback_data=f"select_{keys[i+1]}"))
-            buttons.append(row)
-        buttons.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
-
-        await query.message.edit_text(title, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(buttons))
-
-    elif data.startswith("select_"):
-        raw_symbol = data.split("select_")[1]
-        symbol = SYMBOL_MAP.get(raw_symbol, raw_symbol)
-        keyboard = [
-            [
-                InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"tf_{symbol}_1m"),
-                InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"tf_{symbol}_5m"),
-                InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"tf_{symbol}_15m")
-            ],
-            [InlineKeyboardButton("🔙 العودة للقائمة الرئيسية", callback_data="main_menu")]
-        ]
-        await query.message.edit_text(f"⏰ اختر الإطار الزمني لـ ({symbol}):", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif data.startswith("tf_"):
-        _, raw_symbol, tf = data.split("_", 2)
-        symbol = SYMBOL_MAP.get(raw_symbol, raw_symbol)
-        await query.message.edit_text(f"⏳ جاري تحليل {symbol} وحساب المؤشرات الحية...")
-        res = analyze_asset(symbol, tf)
-
-        if not res or not isinstance(res, dict) or "error" in res:
-                    err_msg = res.get('error', 'فشل جلب البيانات') if isinstance(res, dict) else 'فشل جلب البيانات'
-        await query.message.edit_text(f"❌ {err_msg}")
+    if data == "main_menu":
+        await start(update, context)
         return
 
-        msg = (
-            f"📊 **تحليل فني متكامل لـ {res['symbol']}**\n"
-            f"───────────────────\n"
-            f"⏱️ **الإطار الزمني:** {res['tf_label']}\n"
-            f"💵 **السعر الحالي:** `{res['price']}`\n"
-            f"📈 **مؤشر RSI:** `{res['rsi']}`\n"
-            f"📊 **مؤشر بولينجر:** `{res['bb_status']}`\n"  
-            f"🎯 **التوصية النهائية:**\n"
-            f"{res['signal_emoji']} **{res['signal_text']}**\n\n"
-            f"📐 **الأهداف المقترحة (MT5):**\n"
-            f"💡 **الشراء:** TP `{res['tp_buy']}` | SL `{res['sl_buy']}`\n"
-            f"💡 **البيع:** TP `{res['tp_sell']}` | SL `{res['sl_sell']}`"
-        )
+    # عرض القوائم المقسمة لتناسب الشاشة
+    if data.startswith("cat_"):
+        parts = data.split("_")
+        category = parts[1]
+        page = int(parts[2])
+        
+        assets = ASSETS.get(category, [])
+        start_idx = page * ITEMS_PER_PAGE
+        end_idx = start_idx + ITEMS_PER_PAGE
+        current_assets = assets[start_idx:end_idx]
 
-        keyboard = [[InlineKeyboardButton("🔄 إعادة التحليل", callback_data=f"tf_{symbol}_{tf}"), InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]]
+        keyboard = []
+        for i in range(0, len(current_assets), 2):
+            row = [InlineKeyboardButton(current_assets[i][0], callback_data=f"asset_{current_assets[i][1]}")]
+            if i + 1 < len(current_assets):
+                row.append(InlineKeyboardButton(current_assets[i+1][0], callback_data=f"asset_{current_assets[i+1][1]}"))
+            keyboard.append(row)
+
+        # أزرار الانتقال بين الصفحات
+        nav_row = []
+        if page > 0:
+            nav_row.append(InlineKeyboardButton("⬅️ السابقة", callback_data=f"cat_{category}_{page-1}"))
+        if end_idx < len(assets):
+            nav_row.append(InlineKeyboardButton("التالية ➡️", callback_data=f"cat_{category}_{page+1}"))
+        
+        if nav_row:
+            keyboard.append(nav_row)
+
+        keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
+        await query.message.edit_text("اختر الأصل المالي المطلوب للتحليل اللحظي:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # طلب تحليل الأصل المالي
+    if data.startswith("asset_"):
+        symbol = data.split("asset_")[1]
+        await query.message.edit_text(f"⏳ جاري تحليل `{symbol}` ومسح المؤشرات...", parse_mode="Markdown")
+        
+        loop = asyncio.get_event_loop()
+        res = await loop.run_in_executor(None, analyze_asset, symbol, "5m")
+        
+        keyboard = [[InlineKeyboardButton("🔙 الرجوع للقائمة", callback_data="main_menu")]]
+        
+        if res:
+            msg = (f"📊 **تحليل:** `{symbol}`\n"
+                   f"⏱️ **الإطار الزمني:** 5 دقائق\n"
+                   f"ــــــــــــــــــــــــــــــــــــــــ\n"
+                   f"💵 **السعر الحالي:** `{res['price']:.4f}`\n"
+                   f"📈 **RSI (14):** `{res['rsi']:.2f}`\n"
+                   f"📉 **MACD:** `{res['macd']:.4f}`\n"
+                   f"ــــــــــــــــــــــــــــــــــــــــ\n"
+                   f"🟡 **بولينجر العالي:** `{res['bb_upper']:.4f}`\n"
+                   f"⚪ **بولينجر الوسط:** `{res['bb_middle']:.4f}`\n"
+                   f"🔵 **بولينجر السفلي:** `{res['bb_lower']:.4f}`\n"
+                   f"ــــــــــــــــــــــــــــــــــــــــ\n"
+                   f"🎯 **التوصية اللحظية:**\n {res['signal']}")
+        else:
+            msg = "❌ فشل جلب البيانات. قد يكون السوق مغلقاً حالياً أو الرمز بحاجة لتحديث."
+            
         await query.message.edit_text(msg, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    elif data == "main_menu":
-        await start(update, context)
-
-async def post_init(app: Application):
-    asyncio.create_task(auto_alert_checker(app))
-
-def main():
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not token:
-        return
-
-    app = (
-        Application.builder()
-        .token(token)
-        .post_init(post_init)
-        .read_timeout(30)
-        .write_timeout(30)
-        .connect_timeout(30)
-        .pool_timeout(30)
-        .build()
-    )
-
+# ==========================================
+# 4. تشغيل التطبيق
+# ==========================================
+if __name__ == '__main__':
+    TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+    app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_click))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    
+    print("Full Trading Bot is running...")
     app.run_polling()
     
-    
-
-if __name__ == "__main__":
-    main()
     
     
     
