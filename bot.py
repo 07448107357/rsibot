@@ -246,7 +246,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ==========================================
 if __name__ == '__main__':
     # ضع التوكن الخاص بك هنا
-    TOKEN = "8920172447:AAFPAfJyfLe9A7Avi6Ahidno0inMe0t9jyE"
+    TOKEN = "8920172447:AAEk4lC2eZUQkiuh-56BF1InRXIpHvo6mgI"
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_callback))
