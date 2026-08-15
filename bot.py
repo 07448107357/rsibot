@@ -6,55 +6,90 @@ import numpy as np
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# إعداد التسجيل (Logs)
+# إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# 🔑 التوكن الخاص بك
+# 🔑 ضع التوكن الخاص بك هنا
 TOKEN = "8920172447:AAF0wf_-TG5G7QhV3WRJr8uzNyNS9vSHlFc"
 
 # ---------------------------------------------------------
-# 1. قائمة الأصول المالية المتاحة (Forex, OTC, Stocks, Crypto)
+# 1. قائمة الأصول المالية المستخرجة من منصة بوكيت أوبشن
 # ---------------------------------------------------------
 ASSETS = {
-    "forex": {
-        "EUR/USD": "EURUSD=X",
-        "GBP/USD": "GBPUSD=X",
-        "USD/JPY": "JPY=X",
-        "USD/CHF": "CHF=X",
-        "AUD/USD": "AUDUSD=X",
-        "USD/CAD": "CAD=X",
-        "NZD/USD": "NZDUSD=X",
-        "EUR/GBP": "EURGBP=X",
-        "EUR/JPY": "EURJPY=X",
-        "GBP/JPY": "GBPJPY=X"
+    "otc_high": {
+        "🇦🇪 AED/CNY OTC": "AEDCNY=X",
+        "🇳🇬 NGN/USD OTC": "NGNUSD=X",
+        "🇪🇺 EUR/NZD OTC": "EURNZD=X",
+        "🇷🇺 USD/RUB OTC": "USDRUB=X",
+        "🇨🇦 AUD/CAD OTC": "AUDCAD=X",
+        "🇨🇭 EUR/CHF OTC": "EURCHF=X",
+        "🇪🇬 USD/EGP OTC": "USDEGP=X",
+        "🇯🇵 AUD/JPY OTC": "AUDJPY=X",
+        "🇺🇸 AUD/USD OTC": "AUDUSD=X",
+        "🇭🇺 EUR/HUF OTC": "EURHUF=X"
     },
-    "otc": {
-        "EUR/USD OTC": "EURUSD=X",
-        "GBP/USD OTC": "GBPUSD=X",
-        "USD/JPY OTC": "JPY=X",
-        "AUD/USD OTC": "AUDUSD=X",
-        "USD/CAD OTC": "CAD=X",
-        "EUR/JPY OTC": "EURJPY=X",
-        "GBP/JPY OTC": "GBPJPY=X",
-        "USD/CHF OTC": "CHF=X"
+    "otc_forex": {
+        "🇲🇦 MAD/USD OTC": "MADUSD=X",
+        "🇯🇵 USD/JPY OTC": "USDJPY=X",
+        "🇪🇺 EUR/JPY OTC": "EURJPY=X",
+        "🇩🇿 USD/DZD OTC": "USDDZD=X",
+        "🇮🇩 USD/IDR OTC": "USDIDR=X",
+        "🇹🇭 USD/THB OTC": "USDTHB=X",
+        "🇨🇦 USD/CAD OTC": "USDCAD=X",
+        "🇱🇧 LBP/USD OTC": "LBPUSD=X",
+        "🇵🇰 USD/PKR OTC": "USDPKR=X",
+        "🇰🇪 KES/USD OTC": "KESUSD=X"
+    },
+    "otc_global": {
+        "🇬🇧 GBP/USD OTC": "GBPUSD=X",
+        "🇧🇭 BHD/CNY OTC": "BHDCNY=X",
+        "🇪🇺 EUR/RUB OTC": "EURRUB=X",
+        "🇮🇳 USD/INR OTC": "USDINR=X",
+        "🇺🇦 UAH/USD OTC": "UAHUSD=X",
+        "🇧🇩 USD/BDT OTC": "USDBDT=X",
+        "🇦🇺 AUD/NZD OTC": "AUDNZD=X",
+        "🇯🇴 JOD/CNY OTC": "JODCNY=X",
+        "🇻🇳 USD/VND OTC": "USDVND=X",
+        "🇨🇴 USD/COP OTC": "USDCOP=X"
+    },
+    "otc_more": {
+        "🇯🇵 CHF/JPY OTC": "CHFJPY=X",
+        "🇦🇷 USD/ARS OTC": "USDARS=X",
+        "🇲🇾 USD/MYR OTC": "USDMYR=X",
+        "🇨🇱 USD/CLP OTC": "USDCLP=X",
+        "🇸🇬 USD/SGD OTC": "USDSGD=X",
+        "🇯🇵 CAD/JPY OTC": "CADJPY=X",
+        "🇳🇴 CHF/NOK OTC": "CHFNOK=X",
+        "🇸🇦 SAR/CNY OTC": "SARCNY=X",
+        "🇨🇳 USD/CNH OTC": "USDCNH=X",
+        "🇧🇷 USD/BRL OTC": "USDBRL=X",
+        "🇲🇽 USD/MXN OTC": "USDMXN=X",
+        "🇶🇦 QAR/CNY OTC": "QARCNY=X",
+        "🇳🇿 NZD/USD OTC": "NZDUSD=X",
+        "🇨🇭 USD/CHF OTC": "USDCHF=X"
     },
     "stocks": {
-        "Apple (AAPL)": "AAPL",
-        "Tesla (TSLA)": "TSLA",
-        "Microsoft (MSFT)": "MSFT",
-        "Google (GOOGL)": "GOOGL",
-        "Amazon (AMZN)": "AMZN",
-        "NVIDIA (NVDA)": "NVDA",
-        "Meta (META)": "META"
-    },
-    "crypto": {
-        "Bitcoin (BTC/USD)": "BTC-USD",
-        "Ethereum (ETH/USD)": "ETH-USD",
-        "Binance Coin (BNB/USD)": "BNB-USD",
-        "Ripple (XRP/USD)": "XRP-USD",
-        "Solana (SOL/USD)": "SOL-USD",
-        "Cardano (ADA/USD)": "ADA-USD",
-        "Dogecoin (DOGE/USD)": "DOGE-USD"
+        "✈️ Boeing OTC": "BA",
+        "📘 Facebook OTC": "META",
+        "⛽ ExxonMobil OTC": "XOM",
+        "💻 AMD OTC": "AMD",
+        "📦 Amazon OTC": "AMZN",
+        "🛒 Alibaba OTC": "BABA",
+        "⛏️ Marathon Digital OTC": "MARA",
+        "📊 VIX OTC": "^VIX",
+        "💳 VISA OTC": "V",
+        "🎬 Netflix OTC": "NFLX",
+        "🍔 McDonald's OTC": "MCD",
+        "📦 FedEx OTC": "FDX",
+        "💻 Microsoft OTC": "MSFT",
+        "💊 Pfizer OTC": "PFE",
+        "🍏 Apple OTC": "AAPL",
+        "🪙 Coinbase OTC": "COIN",
+        "🚗 Tesla OTC": "TSLA",
+        "🌐 Cisco OTC": "CSCO",
+        "🏦 Citigroup OTC": "C",
+        "👁️ Palantir OTC": "PLTR",
+        "🟦 Intel OTC": "INTC"
     }
 }
 
@@ -63,51 +98,49 @@ ASSETS = {
 # ---------------------------------------------------------
 def analyze_market(ticker_symbol, timeframe='5m'):
     try:
-        # جلب البيانات
-        data = yf.download(tickers=ticker_symbol, period='1d', interval=timeframe, progress=False)
-        if len(data) < 20:
-            data = yf.download(tickers=ticker_symbol, period='5d', interval=timeframe, progress=False)
+        # تحويل صيغ التايم فريم لـ yfinance
+        interval_map = {'5m': '5m', '15m': '15m', '30m': '30m', '1h': '60m'}
+        yf_interval = interval_map.get(timeframe, '5m')
         
-        if data.empty:
+        # جلب البيانات
+        data = yf.download(tickers=ticker_symbol, period='5d', interval=yf_interval, progress=False)
+        
+        if data.empty or len(data) < 20:
             return "عذراً، تعذر جلب البيانات الحالية لهذا الأصل."
 
-        # حساب سعر الإغلاق
         close = data['Close'].squeeze()
 
-        # 1. حساب RSI (14)
+        # 1. RSI (14)
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss
-        rsi = 100 - (100 / (1 + rs))
-        current_rsi = float(rsi.iloc[-1])
+        rsi = float((100 - (100 / (1 + rs))).iloc[-1])
 
-        # 2. حساب EMA (9, 21)
+        # 2. EMA (9, 21)
         ema9 = float(close.ewm(span=9, adjust=False).mean().iloc[-1])
         ema21 = float(close.ewm(span=21, adjust=False).mean().iloc[-1])
 
-        # 3. حساب Bollinger Bands (20, 2)
+        # 3. Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
         std20 = close.rolling(window=20).std()
         upper_band = float((sma20 + (std20 * 2)).iloc[-1])
         lower_band = float((sma20 - (std20 * 2)).iloc[-1])
         current_price = float(close.iloc[-1])
 
-        # منطق التوصية والاتجاه
-        signal = "NEUTRAL"
+        # منطق تحديد الاتجاه والتوصية
+        signal = "WAIT"
         trend_desc = "اتجاه محايد / تذبذب ⚪"
 
-        # شرط الشراء (BUY): اختراق النطاق السفلي للبولينجر + تقاطع صاعد + RSI مشبع بيعياً
-        if current_price <= lower_band or (ema9 > ema21 and current_rsi < 60):
+        if current_price <= lower_band or (ema9 > ema21 and rsi < 60):
             signal = "BUY"
             trend_desc = "اتجاه صاعد (BUY) 🟢"
-        # شرط البيع (SELL): اختراق النطاق العلوي للبولينجر + تقاطع هابط + RSI مشبع شرائياً
-        elif current_price >= upper_band or (ema9 < ema21 and current_rsi > 40):
+        elif current_price >= upper_band or (ema9 < ema21 and rsi > 40):
             signal = "SELL"
             trend_desc = "اتجاه هابط (SELL) 🔴"
 
         return {
-            "rsi": round(current_rsi, 2),
+            "rsi": round(rsi, 2),
             "price": round(current_price, 5),
             "upper_band": round(upper_band, 5),
             "lower_band": round(lower_band, 5),
@@ -119,15 +152,18 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         return None
 
 # ---------------------------------------------------------
-# 3. معالجات الأوامر والأزرار (Telegram UI)
+# 3. معالجة واجهة أزرار تلغرام (UI Handlers)
 # ---------------------------------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🌐 فوركس (Forex)", callback_data='cat_forex'), InlineKeyboardButton("⚡ سوق OTC", callback_data='cat_otc')],
-        [InlineKeyboardButton("📈 الأسهم (Stocks)", callback_data='cat_stocks'), InlineKeyboardButton("⚡ العملات الرقمية (Crypto)", callback_data='cat_crypto')]
+        [InlineKeyboardButton("🔥 عملات OTC (نسب عالية 1)", callback_data='cat_otc_high')],
+        [InlineKeyboardButton("🌐 عملات OTC (مجموعة 2)", callback_data='cat_otc_forex')],
+        [InlineKeyboardButton("💱 عملات OTC (مجموعة 3)", callback_data='cat_otc_global')],
+        [InlineKeyboardButton("📌 عملات OTC (باقي الأزواج)", callback_data='cat_otc_more')],
+        [InlineKeyboardButton("📈 أسهم بوكيت أوبشن (Stocks)", callback_data='cat_stocks')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    msg = "مرحباً بك في بوت التوصيات المتقدم 🎯\nيرجى اختيار القسم الذي تريد التداول عليه:"
+    msg = "مرحباً بك في بوت التوصيات المتقدم لـ Pocket Option 🎯\nاختر القسم المطلوب للتداول:"
     
     if update.message:
         await update.message.reply_text(msg, reply_markup=reply_markup)
@@ -144,7 +180,9 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     row = []
     for name, symbol in category_assets.items():
-        row.append(InlineKeyboardButton(name, callback_data=f"select_{symbol}_{name}"))
+        # اختصار اسم العرض للأزرار
+        clean_name = name.split()[0] + " " + name.split()[1] if len(name.split()) > 1 else name
+        row.append(InlineKeyboardButton(name, callback_data=f"select_{symbol}_{clean_name}"))
         if len(row) == 2:
             keyboard.append(row)
             row = []
@@ -154,11 +192,11 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.edit_message_text("اختر الزوج أو الأصل المالي للحصول على التوصية:", reply_markup=reply_markup)
+    await query.edit_message_text("اختر الزوج أو الأصل المالي للحصول على التوصية الحية:", reply_markup=reply_markup)
 
 async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer("جاري تحليل الأسواق والمؤشرات...")
+    await query.answer("جاري تحليل المؤشرات الفنية (RSI, Bollinger Bands, EMA)...")
     
     parts = query.data.split('_')
     symbol = parts[1]
@@ -169,35 +207,46 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not result or isinstance(result, str):
         await query.edit_message_text(
-            "⚠️ تعذر جلب البيانات لهذا الأصل حالياً، يرجى المحاولة لاحقاً.",
+            "⚠️ تعذر جلب البيانات لهذا الأصل حالياً، يرجى اختيار أصل آخر.",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]])
         )
         return
 
-    tf_display = "M5" if timeframe == '5m' else "M1" if timeframe == '1m' else "M15"
+    tf_labels = {"5m": "M5 (5 دقائق)", "15m": "M15 (15 دقيقة)", "30m": "M30 (30 دقيقة)", "1h": "H1 (ساعة)"}
+    tf_display = tf_labels.get(timeframe, "M5")
     
     if result['signal'] == "BUY":
-        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء قوي)"
+        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء صريح)"
     elif result['signal'] == "SELL":
-        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع قوي)"
+        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع صريح)"
     else:
-        rec_text = "🎯 التوصية: ⚪ WAIT (انتظار / تذبذب)"
+        rec_text = "🎯 التوصية: ⚪ WAIT (انتظار / عدم دخول)"
 
     text = (
-        f"📡 **الأصل:** {name}\n"
+        f"📊 **تحليل منصة Pocket Option**\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"💱 **الأصل المالي:** {name}\n"
         f"⏱️ **الإطار الزمني:** {tf_display}\n"
-        f"📊 **تحليل الاتجاه:** {result['trend']}\n"
-        f"⚙️ **المؤشرات:** RSI ({result['rsi']}) | Bollinger Bands | EMA\n"
-        f"💵 **السعر الحالي:** {result['price']}\n\n"
+        f"📈 **حالة الاتجاه:** {result['trend']}\n"
+        f"💵 **السعر الحالي:** `{result['price']}`\n\n"
+        f"🔍 **قراءات المؤشرات:**\n"
+        f"🔹 **RSI (14):** `{result['rsi']}`\n"
+        f"📊 **Bollinger Upper:** `{result['upper_band']}`\n"
+        f"📊 **Bollinger Lower:** `{result['lower_band']}`\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
         f"{rec_text}"
     )
 
+    # أزرار التايم فريم المطلوبة (من 5 دقائق إلى ساعة) + زر التحديث
     keyboard = [
         [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
         [
-            InlineKeyboardButton("⏱️ M1", callback_data=f"select_{symbol}_{name}_1m"),
-            InlineKeyboardButton("⏱️ M5", callback_data=f"select_{symbol}_{name}_5m"),
-            InlineKeyboardButton("⏱️ M15", callback_data=f"select_{symbol}_{name}_15m")
+            InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"select_{symbol}_{name}_5m"),
+            InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"select_{symbol}_{name}_15m")
+        ],
+        [
+            InlineKeyboardButton("⏱️ 30 دقيقة", callback_data=f"select_{symbol}_{name}_30m"),
+            InlineKeyboardButton("⏱️ ساعة كاملة", callback_data=f"select_{symbol}_{name}_1h")
         ],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
     ]
@@ -205,7 +254,7 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ---------------------------------------------------------
-# 4. تشغيل التطبيق (Main)
+# 4. تشغيل البوت
 # ---------------------------------------------------------
 def main():
     app = Application.builder().token(TOKEN).build()
@@ -215,11 +264,12 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_category, pattern='^cat_'))
     app.add_handler(CallbackQueryHandler(send_signal, pattern='^select_'))
 
-    print("🤖 Bot is running successfully...")
+    print("🤖 Bot is running successfully with Pocket Option assets...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
         
     
     
