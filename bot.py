@@ -1,6 +1,5 @@
 import logging
 import asyncio
-import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import yfinance as yf
@@ -50,7 +49,6 @@ ASSETS = {
 
 ITEMS_PER_PAGE = 6
 
-# قائمة الفريمات الزمنية المتوفرة
 TIMEFRAMES = [
     [InlineKeyboardButton("⏱️ 5s", callback_data="tf_S5"), InlineKeyboardButton("⏱️ 10s", callback_data="tf_S10"), InlineKeyboardButton("⏱️ 15s", callback_data="tf_S15")],
     [InlineKeyboardButton("⏱️ 30s", callback_data="tf_S30"), InlineKeyboardButton("⏱️ 1m", callback_data="tf_M1"), InlineKeyboardButton("⏱️ 5m", callback_data="tf_M5")],
@@ -59,21 +57,42 @@ TIMEFRAMES = [
 ]
 
 # ==========================================
-# 2. محرك تحليل الاتجاه
+# 2. محرك تحليل ثابت ومستقر (RSI + EMA)
 # ==========================================
 def get_signal_direction(ticker):
     try:
         data = yf.download(tickers=ticker, period="1d", interval="1m", progress=False)
-        if data.empty or len(data) < 5:
-            return random.choice(["BUY", "SELL"])
+        if data.empty or len(data) < 10:
+            return "BUY"  # قيمة افتراضية ثابتة عند عدم توفر البيانات لتجنب العشوائية
         
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+
         close = data['Close'].dropna()
-        ema = close.ewm(span=5, adjust=False).mean().iloc[-1]
-        current = close.iloc[-1]
+        current_price = close.iloc[-1]
         
-        return "BUY" if current >= ema else "SELL"
-    except:
-        return random.choice(["BUY", "SELL"])
+        # حساب EMA 20
+        ema20 = close.ewm(span=20, adjust=False).mean().iloc[-1]
+        
+        # حساب RSI 14
+        delta = close.diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / (loss + 1e-9)
+        rsi = 100 - (100 / (1 + rs))
+        current_rsi = rsi.iloc[-1]
+
+        # معادلة ثابتة لاتخاذ القرار
+        if current_price > ema20 and current_rsi > 45:
+            return "BUY"
+        elif current_price < ema20 and current_rsi < 55:
+            return "SELL"
+        else:
+            return "BUY" if current_price >= ema20 else "SELL"
+            
+    except Exception as e:
+        logging.error(f"Error analyzing {ticker}: {e}")
+        return "BUY"
 
 # ==========================================
 # 3. الأوامر والقوائم التفاعلية
@@ -102,7 +121,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await start(update, context)
         return
 
-    # عرض الفئات والتنقل بين الصفحات
     if data.startswith("cat_"):
         parts = data.split("_")
         cat = parts[1]
@@ -132,13 +150,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
         await query.message.edit_text("اختر الزوج أو الأصل المطلوب:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # اختيار الفريم الزمني عند النقر على الأصل
     elif data.startswith("select_"):
         parts = data.split("_")
         ticker = parts[1]
         pair_display_name = parts[2]
         
-        # حفظ الأصل المختار في بيانات الجلسة (user_data)
         context.user_data['selected_ticker'] = ticker
         context.user_data['selected_name'] = pair_display_name
         
@@ -149,13 +165,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup
         )
 
-    # توليد التوصية بناءً على الفريم الزمني المختار
     elif data.startswith("tf_"):
         tf_code = data.split("_")[1]
-        ticker = context.user_data.get('selected_ticker', 'EURUSD=X')
-        pair_display_name = context.user_data.get('selected_name', 'EUR/USD OTC 🚀')
+        ticker = context.user_data.get('selected_ticker', 'AAPL')
+        pair_display_name = context.user_data.get('selected_name', 'Apple OTC 🍏')
         
-        # 1. إرسال رسالة جاري التحليل
         msg = await query.message.reply_text(
             f"📡 **{pair_display_name}**\n⏱️ **Time Frame:** {tf_code}\n\n⏳ *Analyzing market... 28%*",
             parse_mode="Markdown"
@@ -163,7 +177,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await asyncio.sleep(1.2)
         
-        # 2. جلب الاتجاه
         direction = get_signal_direction(ticker)
         
         if direction == "BUY":
@@ -193,6 +206,7 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     app.run_polling()
+    
     
     
     
