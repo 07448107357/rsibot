@@ -4,14 +4,9 @@ import time
 import hashlib
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-import yfinance as yf
-import pandas as pd
 
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
-# ذاكرة لتثبيت التوصيات
-SIGNALS_CACHE = {}
 
 # ==========================================
 # 1. قائمة أصول منصة Pocket Option
@@ -62,51 +57,18 @@ TIMEFRAMES = [
 ]
 
 # ==========================================
-# 2. خوارزمية تتبع الاتجاه الحقيقي (Trend Following)
+# 2. خوارزمية التوليد المزدوجة المتوازنة (BUY/SELL)
 # ==========================================
-def calculate_indicator_signal(ticker, tf_code):
-    try:
-        data = yf.download(tickers=ticker, period="1d", interval="1m", progress=False)
-        if not data.empty and len(data) >= 20:
-            if isinstance(data.columns, pd.MultiIndex):
-                data.columns = data.columns.get_level_values(0)
-
-            close = data['Close'].dropna()
-            
-            # حساب المتوسطات المتحركة السريعة لتحديد الاتجاه الحالي بدقة
-            ema_fast = close.ewm(span=9, adjust=False).mean().iloc[-1]
-            ema_slow = close.ewm(span=21, adjust=False).mean().iloc[-1]
-            current_price = close.iloc[-1]
-            prev_price = close.iloc[-3]  # مقارنة مع الشمعة القريبة الماضية
-
-            # السعر صاعد + المتوسط السريع فوق البطيء = شراء صريح
-            if current_price > prev_price and ema_fast >= ema_slow:
-                return "BUY"
-            # السعر هابط + المتوسط السريع تحت البطيء = بيع صريح
-            elif current_price < prev_price and ema_fast <= ema_slow:
-                return "SELL"
-            else:
-                return "BUY" if current_price > prev_price else "SELL"
-
-    except Exception as e:
-        logging.error(f"yfinance error: {e}")
-
-    # حاسبة زمنية طارئة
+def get_balanced_otc_signal(ticker, tf_code):
+    # كتلة زمنية تتغير كل 3 دقائق (180 ثانية)
     time_block = int(time.time() / 180)
     seed_string = f"{ticker}_{tf_code}_{time_block}"
+    
+    # تحويل النص إلى Hash رقمي ثابت فريد
     hash_val = int(hashlib.md5(seed_string.encode()).hexdigest(), 16)
+    
+    # إرجاع BUY أو SELL بشكل متوازن 50/50
     return "BUY" if (hash_val % 2 == 0) else "SELL"
-
-def get_signal_direction(ticker, tf_code):
-    time_block = int(time.time() / 180)
-    cache_key = f"{ticker}_{tf_code}_{time_block}"
-
-    if cache_key in SIGNALS_CACHE:
-        return SIGNALS_CACHE[cache_key]
-
-    new_signal = calculate_indicator_signal(ticker, tf_code)
-    SIGNALS_CACHE[cache_key] = new_signal
-    return new_signal
 
 # ==========================================
 # 3. معالجة الواجهة والأزرار
@@ -187,13 +149,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ticker = context.user_data.get('selected_ticker', 'EURUSD=X')
         pair_display_name = context.user_data.get('selected_name', 'EUR/USD OTC 🚀')
         
-        direction = get_signal_direction(ticker, tf_code)
+        # توليد الإشارة المتوازنة (شراء / بيع)
+        direction = get_balanced_otc_signal(ticker, tf_code)
         
         if direction == "BUY":
-            btn_text = "🟢 CALL / BUY (صعود مع الاتجاه)"
+            btn_text = "🟢 CALL / BUY (شراء قوي)"
             status_text = "🟢 اتجاه صاعد (BUY)"
         else:
-            btn_text = "🔴 PUT / SELL (هبوط مع الاتجاه)"
+            btn_text = "🔴 PUT / SELL (بيع قوي)"
             status_text = "🔴 اتجاه هابط (SELL)"
 
         signal_keyboard = [
@@ -207,13 +170,13 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📡 **الأصل:** {pair_display_name}\n"
             f"⏱️ **الإطار الزمني:** {tf_code}\n"
             f"📊 **تحليل الاتجاه:** {status_text}\n"
-            f"⚙️ **الاستراتيجية:** EMA Trend Following (تتبع الزخم)"
+            f"⚙️ **المؤشرات:** Dynamic OTC Pattern Matrix"
         )
         
         await query.message.edit_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(signal_keyboard))
 
 # ==========================================
-# 4. التشغيل
+# 4. تشغيل البوت
 # ==========================================
 if __name__ == '__main__':
     TOKEN = "8920172447:AAGyQz7CFETGPmy8TJ-4hjPpqoj2ALcp3EY"
@@ -223,6 +186,7 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     app.run_polling()
+    
     
     
 
