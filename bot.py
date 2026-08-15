@@ -62,7 +62,7 @@ TIMEFRAMES = [
 ]
 
 # ==========================================
-# 2. خوارزمية التحليل المتوافقة معكوسة الإشارة
+# 2. خوارزمية تتبع الاتجاه الحقيقي (Trend Following)
 # ==========================================
 def calculate_indicator_signal(ticker, tf_code):
     try:
@@ -72,41 +72,30 @@ def calculate_indicator_signal(ticker, tf_code):
                 data.columns = data.columns.get_level_values(0)
 
             close = data['Close'].dropna()
+            
+            # حساب المتوسطات المتحركة السريعة لتحديد الاتجاه الحالي بدقة
+            ema_fast = close.ewm(span=9, adjust=False).mean().iloc[-1]
+            ema_slow = close.ewm(span=21, adjust=False).mean().iloc[-1]
             current_price = close.iloc[-1]
+            prev_price = close.iloc[-3]  # مقارنة مع الشمعة القريبة الماضية
 
-            sma20 = close.rolling(window=20).mean().iloc[-1]
-            std20 = close.rolling(window=20).std().iloc[-1]
-            upper_band = sma20 + (std20 * 2)
-            lower_band = sma20 - (std20 * 2)
-
-            delta = close.diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-            rs = gain / (loss + 1e-9)
-            rsi = (100 - (100 / (1 + rs))).iloc[-1]
-
-            buy_score = 0
-            sell_score = 0
-
-            if current_price <= lower_band: buy_score += 2
-            elif current_price >= upper_band: sell_score += 2
-
-            if rsi < 45: buy_score += 2
-            elif rsi > 55: sell_score += 2
-
-            # التعديل هنا: تم عكس الاتجاه للتطابق مع سلوك OTC بالمنصة
-            if buy_score > sell_score:
-                return "SELL"
-            elif sell_score > buy_score:
+            # السعر صاعد + المتوسط السريع فوق البطيء = شراء صريح
+            if current_price > prev_price and ema_fast >= ema_slow:
                 return "BUY"
+            # السعر هابط + المتوسط السريع تحت البطيء = بيع صريح
+            elif current_price < prev_price and ema_fast <= ema_slow:
+                return "SELL"
+            else:
+                return "BUY" if current_price > prev_price else "SELL"
 
     except Exception as e:
         logging.error(f"yfinance error: {e}")
 
+    # حاسبة زمنية طارئة
     time_block = int(time.time() / 180)
     seed_string = f"{ticker}_{tf_code}_{time_block}"
     hash_val = int(hashlib.md5(seed_string.encode()).hexdigest(), 16)
-    return "SELL" if (hash_val % 2 == 0) else "BUY"
+    return "BUY" if (hash_val % 2 == 0) else "SELL"
 
 def get_signal_direction(ticker, tf_code):
     time_block = int(time.time() / 180)
@@ -120,7 +109,7 @@ def get_signal_direction(ticker, tf_code):
     return new_signal
 
 # ==========================================
-# 3. معالجة الرسائل والتفاعل عبر الأزرار
+# 3. معالجة الواجهة والأزرار
 # ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -201,11 +190,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         direction = get_signal_direction(ticker, tf_code)
         
         if direction == "BUY":
-            btn_text = "🟢 CALL / BUY (شراء قوي)"
-            status_text = "🟢 شراء (BUY)"
+            btn_text = "🟢 CALL / BUY (صعود مع الاتجاه)"
+            status_text = "🟢 اتجاه صاعد (BUY)"
         else:
-            btn_text = "🔴 PUT / SELL (بيع قوي)"
-            status_text = "🔴 بيع (SELL)"
+            btn_text = "🔴 PUT / SELL (هبوط مع الاتجاه)"
+            status_text = "🔴 اتجاه هابط (SELL)"
 
         signal_keyboard = [
             [InlineKeyboardButton(f"🎯 التوصية: {btn_text}", callback_data="none")],
@@ -217,14 +206,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = (
             f"📡 **الأصل:** {pair_display_name}\n"
             f"⏱️ **الإطار الزمني:** {tf_code}\n"
-            f"📊 **التوصية الحالية:** {status_text}\n"
-            f"⚙️ **التحليل:** RSI + Bollinger Bands + MACD"
+            f"📊 **تحليل الاتجاه:** {status_text}\n"
+            f"⚙️ **الاستراتيجية:** EMA Trend Following (تتبع الزخم)"
         )
         
         await query.message.edit_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(signal_keyboard))
 
 # ==========================================
-# 4. تشغيل البوت
+# 4. التشغيل
 # ==========================================
 if __name__ == '__main__':
     TOKEN = "8920172447:AAFLCY46GvNACIdyC62VIoIwNTjKNtpkIRg"
@@ -234,6 +223,7 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     app.run_polling()
+    
     
 
     
