@@ -216,7 +216,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 4. التشغيل
 # ==========================================
 if __name__ == '__main__':
-    TOKEN = "8920172447:AAFLCY46GvNACIdyC62VIoIwNTjKNtpkIRg"
+    TOKEN = "8920172447:AAGyQz7CFETGPmy8TJ-4hjPpqoj2ALcp3EY"
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
