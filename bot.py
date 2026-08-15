@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # 🔑 التوكن الخاص بك
-TOKEN = "8920172447:AAFMe8TspheIESbjIUtqzieKnqqC1OOeeiE"
+TOKEN = "8920172447:AAF0wf_-TG5G7QhV3WRJr8uzNyNS9vSHlFc"
 
 # ---------------------------------------------------------
 # 1. قائمة الأصول المالية المتاحة (Forex, OTC, Stocks, Crypto)
