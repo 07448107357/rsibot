@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import time
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import yfinance as yf
@@ -7,6 +8,9 @@ import pandas as pd
 
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# ذاكرة لتثبيت التوصيات لمدة 3 دقائق منعاً للتذبذب
+SIGNALS_CACHE = {}
 
 # ==========================================
 # 1. قائمة جميع أصول منصة Pocket Option
@@ -57,13 +61,13 @@ TIMEFRAMES = [
 ]
 
 # ==========================================
-# 2. محرك تحليل ثابت ومستقر (RSI + EMA)
+# 2. محرك التحليل المتقدم (Bollinger Bands + RSI + EMA)
 # ==========================================
-def get_signal_direction(ticker):
+def calculate_indicator_signal(ticker):
     try:
         data = yf.download(tickers=ticker, period="1d", interval="1m", progress=False)
-        if data.empty or len(data) < 10:
-            return "BUY"  # قيمة افتراضية ثابتة عند عدم توفر البيانات لتجنب العشوائية
+        if data.empty or len(data) < 20:
+            return "BUY"
         
         if isinstance(data.columns, pd.MultiIndex):
             data.columns = data.columns.get_level_values(0)
@@ -71,28 +75,73 @@ def get_signal_direction(ticker):
         close = data['Close'].dropna()
         current_price = close.iloc[-1]
         
-        # حساب EMA 20
-        ema20 = close.ewm(span=20, adjust=False).mean().iloc[-1]
+        # 1. حساب Bollinger Bands (20, 2)
+        sma20 = close.rolling(window=20).mean()
+        std20 = close.rolling(window=20).std()
+        upper_band = (sma20 + (std20 * 2)).iloc[-1]
+        lower_band = (sma20 - (std20 * 2)).iloc[-1]
+        middle_band = sma20.iloc[-1]
         
-        # حساب RSI 14
+        # 2. حساب RSI (14)
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / (loss + 1e-9)
-        rsi = 100 - (100 / (1 + rs))
-        current_rsi = rsi.iloc[-1]
+        rsi = (100 - (100 / (1 + rs))).iloc[-1]
 
-        # معادلة ثابتة لاتخاذ القرار
-        if current_price > ema20 and current_rsi > 45:
-            return "BUY"
-        elif current_price < ema20 and current_rsi < 55:
-            return "SELL"
+        # 3. حساب EMA (20)
+        ema20 = close.ewm(span=20, adjust=False).mean().iloc[-1]
+
+        # معايير اتخاذ القرار بناءً على الشروط المدمجة
+        buy_score = 0
+        sell_score = 0
+
+        # شروط Bollinger Bands
+        if current_price <= lower_band:
+            buy_score += 2  # تشبع بيعي قوي
+        elif current_price >= upper_band:
+            sell_score += 2  # تشبع شرائي قوي
+        elif current_price > middle_band:
+            buy_score += 1
         else:
-            return "BUY" if current_price >= ema20 else "SELL"
-            
+            sell_score += 1
+
+        # شروط RSI
+        if rsi < 35:
+            buy_score += 2
+        elif rsi > 65:
+            sell_score += 2
+        elif rsi > 50:
+            buy_score += 1
+        else:
+            sell_score += 1
+
+        # شروط EMA
+        if current_price > ema20:
+            buy_score += 1
+        else:
+            sell_score += 1
+
+        return "BUY" if buy_score >= sell_score else "SELL"
+
     except Exception as e:
-        logging.error(f"Error analyzing {ticker}: {e}")
+        logging.error(f"Error in analysis for {ticker}: {e}")
         return "BUY"
+
+def get_signal_direction(ticker, tf_code):
+    cache_key = f"{ticker}_{tf_code}"
+    current_time = time.time()
+
+    # إذا كانت التوصية محفوظة ولم تمضِ عليها 180 ثانية (3 دقائق)، استرجع نفس التوصية
+    if cache_key in SIGNALS_CACHE:
+        cached_signal, timestamp = SIGNALS_CACHE[cache_key]
+        if current_time - timestamp < 180:
+            return cached_signal
+
+    # حساب توصية جديدة وحفظها في الذاكرة
+    new_signal = calculate_indicator_signal(ticker)
+    SIGNALS_CACHE[cache_key] = (new_signal, current_time)
+    return new_signal
 
 # ==========================================
 # 3. الأوامر والقوائم التفاعلية
@@ -167,8 +216,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("tf_"):
         tf_code = data.split("_")[1]
-        ticker = context.user_data.get('selected_ticker', 'AAPL')
-        pair_display_name = context.user_data.get('selected_name', 'Apple OTC 🍏')
+        ticker = context.user_data.get('selected_ticker', 'AUDCAD=X')
+        pair_display_name = context.user_data.get('selected_name', 'AUD/CAD OTC 🚀')
         
         msg = await query.message.reply_text(
             f"📡 **{pair_display_name}**\n⏱️ **Time Frame:** {tf_code}\n\n⏳ *Analyzing market... 28%*",
@@ -177,7 +226,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await asyncio.sleep(1.2)
         
-        direction = get_signal_direction(ticker)
+        direction = get_signal_direction(ticker, tf_code)
         
         if direction == "BUY":
             arrows = "⬆️  ⬆️  ⬆️\n⬆️  ⬆️  ⬆️"
@@ -199,13 +248,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 4. تشغيل البوت
 # ==========================================
 if __name__ == '__main__':
-    TOKEN = "8920172447:AAEcD4ZNZGit9Jx4jUUSYYxx7qtpJOu1npI"
+    TOKEN = "8920172447:AAEk41C2eZUQkiuh-56BF1InRXIpHvo6mgI"
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     app.run_polling()
+    
     
     
     
