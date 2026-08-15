@@ -50,6 +50,14 @@ ASSETS = {
 
 ITEMS_PER_PAGE = 6
 
+# قائمة الفريمات الزمنية المتوفرة
+TIMEFRAMES = [
+    [InlineKeyboardButton("⏱️ 5s", callback_data="tf_S5"), InlineKeyboardButton("⏱️ 10s", callback_data="tf_S10"), InlineKeyboardButton("⏱️ 15s", callback_data="tf_S15")],
+    [InlineKeyboardButton("⏱️ 30s", callback_data="tf_S30"), InlineKeyboardButton("⏱️ 1m", callback_data="tf_M1"), InlineKeyboardButton("⏱️ 5m", callback_data="tf_M5")],
+    [InlineKeyboardButton("⏱️ 15m", callback_data="tf_M15"), InlineKeyboardButton("⏱️ 1h", callback_data="tf_H1")],
+    [InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]
+]
+
 # ==========================================
 # 2. محرك تحليل الاتجاه
 # ==========================================
@@ -78,7 +86,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
          InlineKeyboardButton("🥇 السلع والمعادن", callback_data="cat_commodities_0")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    msg = "Welcome to **Lyra OTC Signals Bot** 🤖\n\nاختر القسم المالي للحصول على توصيات لحظية:"
+    msg = "Welcome to **Lyra OTC Signals Bot** 🤖\n\nاختر القسم المالي للاستعراض:"
     
     if update.message:
         await update.message.reply_text(msg, parse_mode="Markdown", reply_markup=reply_markup)
@@ -108,9 +116,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = []
         for i in range(0, len(current_assets), 2):
-            row = [InlineKeyboardButton(current_assets[i][0], callback_data=f"sig_{current_assets[i][1]}_{current_assets[i][0]}")]
+            row = [InlineKeyboardButton(current_assets[i][0], callback_data=f"select_{current_assets[i][1]}_{current_assets[i][0]}")]
             if i + 1 < len(current_assets):
-                row.append(InlineKeyboardButton(current_assets[i+1][0], callback_data=f"sig_{current_assets[i+1][1]}_{current_assets[i+1][0]}"))
+                row.append(InlineKeyboardButton(current_assets[i+1][0], callback_data=f"select_{current_assets[i+1][1]}_{current_assets[i+1][0]}"))
             keyboard.append(row)
 
         nav_row = []
@@ -124,21 +132,38 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
         await query.message.edit_text("اختر الزوج أو الأصل المطلوب:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # إرسال التوصية بتنسيق الأسهم الكبيرة
-    elif data.startswith("sig_"):
+    # اختيار الفريم الزمني عند النقر على الأصل
+    elif data.startswith("select_"):
         parts = data.split("_")
         ticker = parts[1]
         pair_display_name = parts[2]
         
+        # حفظ الأصل المختار في بيانات الجلسة (user_data)
+        context.user_data['selected_ticker'] = ticker
+        context.user_data['selected_name'] = pair_display_name
+        
+        reply_markup = InlineKeyboardMarkup(TIMEFRAMES)
+        await query.message.edit_text(
+            f"🎯 الأصل المختار: **{pair_display_name}**\n\n⏱️ **اختر الإطار الزمني (Time Frame):**",
+            parse_mode="Markdown",
+            reply_markup=reply_markup
+        )
+
+    # توليد التوصية بناءً على الفريم الزمني المختار
+    elif data.startswith("tf_"):
+        tf_code = data.split("_")[1]
+        ticker = context.user_data.get('selected_ticker', 'EURUSD=X')
+        pair_display_name = context.user_data.get('selected_name', 'EUR/USD OTC 🚀')
+        
         # 1. إرسال رسالة جاري التحليل
         msg = await query.message.reply_text(
-            f"📡 **{pair_display_name}**\n⏱️ **Time Frame:** S15\n\n⏳ *Analyzing market... 28%*",
+            f"📡 **{pair_display_name}**\n⏱️ **Time Frame:** {tf_code}\n\n⏳ *Analyzing market... 28%*",
             parse_mode="Markdown"
         )
         
         await asyncio.sleep(1.2)
         
-        # 2. جلب التوصية
+        # 2. جلب الاتجاه
         direction = get_signal_direction(ticker)
         
         if direction == "BUY":
@@ -150,7 +175,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
         final_text = (
             f"📡 **{pair_display_name}**\n"
-            f"⏱️ **Time Frame:** S15\n\n"
+            f"⏱️ **Time Frame:** {tf_code}\n\n"
             f"{arrows}\n\n"
             f"🎯 **Signal:** `{action_text}`"
         )
@@ -161,13 +186,14 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 4. تشغيل البوت
 # ==========================================
 if __name__ == '__main__':
-    TOKEN = "8920172447:AAEk4lC2eZUQkiuh-56BF1InRXIpHvo6mgI"
+    TOKEN = "8920172447:AAEk41C2eZUQkiuh-56BF1InRXIpHvo6mgI"
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     app.run_polling()
+    
     
     
     
