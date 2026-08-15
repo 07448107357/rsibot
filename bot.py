@@ -14,7 +14,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 SIGNALS_CACHE = {}
 
 # ==========================================
-# 1. قائمة جميع أصول منصة Pocket Option
+# 1. قائمة أصول منصة Pocket Option
 # ==========================================
 ASSETS = {
     "forex": [
@@ -62,7 +62,7 @@ TIMEFRAMES = [
 ]
 
 # ==========================================
-# 2. خوارزمية التحليل المتوازنة القوية
+# 2. خوارزمية التحليل المتوافقة معكوسة الإشارة
 # ==========================================
 def calculate_indicator_signal(ticker, tf_code):
     try:
@@ -94,19 +94,19 @@ def calculate_indicator_signal(ticker, tf_code):
             if rsi < 45: buy_score += 2
             elif rsi > 55: sell_score += 2
 
+            # التعديل هنا: تم عكس الاتجاه للتطابق مع سلوك OTC بالمنصة
             if buy_score > sell_score:
-                return "BUY"
-            elif sell_score > buy_score:
                 return "SELL"
+            elif sell_score > buy_score:
+                return "BUY"
 
     except Exception as e:
         logging.error(f"yfinance error: {e}")
 
-    # حاسبة زمنية تضمن التوازن الفعلي 50% BUY و 50% SELL لكل 3 دقائق
     time_block = int(time.time() / 180)
     seed_string = f"{ticker}_{tf_code}_{time_block}"
     hash_val = int(hashlib.md5(seed_string.encode()).hexdigest(), 16)
-    return "BUY" if (hash_val % 2 == 0) else "SELL"
+    return "SELL" if (hash_val % 2 == 0) else "BUY"
 
 def get_signal_direction(ticker, tf_code):
     time_block = int(time.time() / 180)
@@ -120,7 +120,7 @@ def get_signal_direction(ticker, tf_code):
     return new_signal
 
 # ==========================================
-# 3. معالجة الرسائل والتفاعل عبر الأزرار فقط
+# 3. معالجة الرسائل والتفاعل عبر الأزرار
 # ==========================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -207,7 +207,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             btn_text = "🔴 PUT / SELL (بيع قوي)"
             status_text = "🔴 بيع (SELL)"
 
-        # الأزرار تحتوي على التوصية مباشرة دون إنشاء رسائل إضافية بالأسفل
         signal_keyboard = [
             [InlineKeyboardButton(f"🎯 التوصية: {btn_text}", callback_data="none")],
             [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"tf_{tf_code}")],
@@ -222,7 +221,6 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"⚙️ **التحليل:** RSI + Bollinger Bands + MACD"
         )
         
-        # التعديل على نفس الرسالة المفتوحة
         await query.message.edit_text(text, parse_mode="Markdown", reply_markup=InlineKeyboardMarkup(signal_keyboard))
 
 # ==========================================
@@ -236,6 +234,7 @@ if __name__ == '__main__':
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     app.run_polling()
+    
 
     
     
