@@ -179,7 +179,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 4. تشغيل البوت
 # ==========================================
 if __name__ == '__main__':
-    TOKEN = "8920172447:AAHoejx2trwmN8nVoDnySwKSF281fDsZgI0"
+    TOKEN = "8920172447:AAE8ruEBogdS-8HXpvDGVHyq1G0sU7zaOQs"
     app = Application.builder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
