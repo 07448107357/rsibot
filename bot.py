@@ -10,10 +10,10 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # 🔑 ضع التوكن الخاص بك هنا
-TOKEN = "8920172447:AAF0wf_-TG5G7QhV3WRJr8uzNyNS9vSHlFc"
+TOKEN = "8920172447:AAFVnY7aZob1u9iNrZ7ULBagZ7kDbFCF_m8"
 
 # ---------------------------------------------------------
-# 1. قائمة الأصول المالية المستخرجة من منصة بوكيت أوبشن
+# 1. قائمة الأصول المالية منصة بوكيت أوبشن
 # ---------------------------------------------------------
 ASSETS = {
     "otc_high": {
@@ -94,50 +94,64 @@ ASSETS = {
 }
 
 # ---------------------------------------------------------
-# 2. خوارزمية التحليل الفني (RSI + EMA + Bollinger Bands)
+# 2. خوارزمية التحليل الفني المحدثة والمتوازنة
 # ---------------------------------------------------------
 def analyze_market(ticker_symbol, timeframe='5m'):
     try:
-        # تحويل صيغ التايم فريم لـ yfinance
         interval_map = {'5m': '5m', '15m': '15m', '30m': '30m', '1h': '60m'}
         yf_interval = interval_map.get(timeframe, '5m')
         
-        # جلب البيانات
+        # جلب بيانات الأيام الأخيرة
         data = yf.download(tickers=ticker_symbol, period='5d', interval=yf_interval, progress=False)
         
-        if data.empty or len(data) < 20:
-            return "عذراً، تعذر جلب البيانات الحالية لهذا الأصل."
+        # إذا لم تتوفر بيانات للزوج بـ 5m نرفع الفترة لـ 1d للتأكد من القراءة
+        if data.empty or len(data) < 15:
+            data = yf.download(tickers=ticker_symbol, period='1mo', interval='1d', progress=False)
+            
+        if data.empty or len(data) < 5:
+            return None
 
         close = data['Close'].squeeze()
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
 
-        # 1. RSI (14)
+        # 1. حساب RSI (14)
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        
+        # حماية من القسمة على صفر
+        loss = loss.replace(0, 0.00001)
         rs = gain / loss
-        rsi = float((100 - (100 / (1 + rs))).iloc[-1])
+        rsi_series = 100 - (100 / (1 + rs))
+        rsi = float(rsi_series.dropna().iloc[-1]) if not rsi_series.dropna().empty else 50.0
 
-        # 2. EMA (9, 21)
+        # 2. EMA (9 و 21)
         ema9 = float(close.ewm(span=9, adjust=False).mean().iloc[-1])
         ema21 = float(close.ewm(span=21, adjust=False).mean().iloc[-1])
 
         # 3. Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
         std20 = close.rolling(window=20).std()
-        upper_band = float((sma20 + (std20 * 2)).iloc[-1])
-        lower_band = float((sma20 - (std20 * 2)).iloc[-1])
+        upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1]) if not sma20.dropna().empty else float(close.iloc[-1] * 1.01)
+        lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1]) if not sma20.dropna().empty else float(close.iloc[-1] * 0.99)
         current_price = float(close.iloc[-1])
 
-        # منطق تحديد الاتجاه والتوصية
+        # منطق ديناميكي متوازن لإعطاء إشارات متنوعة (شراء / بيع / انتظار)
         signal = "WAIT"
         trend_desc = "اتجاه محايد / تذبذب ⚪"
 
-        if current_price <= lower_band or (ema9 > ema21 and rsi < 60):
+        # شروط الشراء (CALL)
+        if current_price <= lower_band or rsi < 35 or (ema9 > ema21 and rsi < 55):
             signal = "BUY"
             trend_desc = "اتجاه صاعد (BUY) 🟢"
-        elif current_price >= upper_band or (ema9 < ema21 and rsi > 40):
+        # شروط البيع (PUT)
+        elif current_price >= upper_band or rsi > 65 or (ema9 < ema21 and rsi > 45):
             signal = "SELL"
             trend_desc = "اتجاه هابط (SELL) 🔴"
+        else:
+            signal = "WAIT"
+            trend_desc = "اتجاه محايد / تذبذب ⚪"
 
         return {
             "rsi": round(rsi, 2),
@@ -148,11 +162,11 @@ def analyze_market(ticker_symbol, timeframe='5m'):
             "signal": signal
         }
     except Exception as e:
-        logging.error(f"Error in analysis: {e}")
+        logging.error(f"Error analyzing {ticker_symbol}: {e}")
         return None
 
 # ---------------------------------------------------------
-# 3. معالجة واجهة أزرار تلغرام (UI Handlers)
+# 3. معالجة واجهة أزرار تلغرام
 # ---------------------------------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -180,7 +194,6 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     row = []
     for name, symbol in category_assets.items():
-        # اختصار اسم العرض للأزرار
         clean_name = name.split()[0] + " " + name.split()[1] if len(name.split()) > 1 else name
         row.append(InlineKeyboardButton(name, callback_data=f"select_{symbol}_{clean_name}"))
         if len(row) == 2:
@@ -205,9 +218,9 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     result = analyze_market(symbol, timeframe)
     
-    if not result or isinstance(result, str):
+    if not result:
         await query.edit_message_text(
-            "⚠️ تعذر جلب البيانات لهذا الأصل حالياً، يرجى اختيار أصل آخر.",
+            "⚠️ السوق مغلق حالياً لهذا الأصل أو تعذر جلب البيانات اللحظية، يرجى تجربة أصل آخر.",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]])
         )
         return
@@ -222,7 +235,6 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         rec_text = "🎯 التوصية: ⚪ WAIT (انتظار / عدم دخول)"
 
-    # نص منسق ونظيف وبدون وسوم HTML تجنباً لأي تشوه
     text = (
         f"📊 تحليل منصة Pocket Option\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
@@ -251,42 +263,7 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
     ]
     
-    # بدون parse_mode لضمان ظهور النص بشكل سليم ومرتب وبدون رموز أكواد
     await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-    
-
-    keyboard = [
-        [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
-        [
-            InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"select_{symbol}_{name}_5m"),
-            InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"select_{symbol}_{name}_15m")
-        ],
-        [
-            InlineKeyboardButton("⏱️ 30 دقيقة", callback_data=f"select_{symbol}_{name}_30m"),
-            InlineKeyboardButton("⏱️ ساعة كاملة", callback_data=f"select_{symbol}_{name}_1h")
-        ],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
-    ]
-    
-    # استخدام parse_mode='HTML' هنا يحل مشكلة التنسيق تماماً
-    await query.edit_message_text(text, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
-    
-
-    # أزرار التايم فريم المطلوبة (من 5 دقائق إلى ساعة) + زر التحديث
-    keyboard = [
-        [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
-        [
-            InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"select_{symbol}_{name}_5m"),
-            InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"select_{symbol}_{name}_15m")
-        ],
-        [
-            InlineKeyboardButton("⏱️ 30 دقيقة", callback_data=f"select_{symbol}_{name}_30m"),
-            InlineKeyboardButton("⏱️ ساعة كاملة", callback_data=f"select_{symbol}_{name}_1h")
-        ],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
-    ]
-    
-    await query.edit_message_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
 # ---------------------------------------------------------
 # 4. تشغيل البوت
@@ -299,11 +276,12 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_category, pattern='^cat_'))
     app.add_handler(CallbackQueryHandler(send_signal, pattern='^select_'))
 
-    print("🤖 Bot is running successfully with Pocket Option assets...")
+    print("🤖 Bot is running successfully...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
     
         
     
