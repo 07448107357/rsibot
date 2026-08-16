@@ -216,27 +216,44 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tf_display = tf_labels.get(timeframe, "M5")
     
     if result['signal'] == "BUY":
-        rec_text = "🎯 <b>التوصية:</b> 🟢 CALL / BUY (شراء)"
+        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء)"
     elif result['signal'] == "SELL":
-        rec_text = "🎯 <b>التوصية:</b> 🔴 PUT / SELL (بيع)"
+        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع)"
     else:
-        rec_text = "🎯 <b>التوصية:</b> ⚪ WAIT (انتظار)"
+        rec_text = "🎯 التوصية: ⚪ WAIT (انتظار / عدم دخول)"
 
-    # تنسيق الرسالة باستخدام HTML لتفادي مشكلة اتجاه النص والرموز الغريبة
+    # نص منسق ونظيف وبدون وسوم HTML تجنباً لأي تشوه
     text = (
-        f"📊 <b>تحليل منصة Pocket Option</b>\n"
-        f"───────────────────\n"
-        f"💱 <b>الأصل المالي:</b> {name}\n"
-        f"⏱️ <b>الإطار الزمني:</b> {tf_display}\n"
-        f"📈 <b>حالة الاتجاه:</b> {result['trend']}\n"
-        f"💵 <b>السعر الحالي:</b> <code>{result['price']}</code>\n\n"
-        f"🔍 <b>قراءات المؤشرات:</b>\n"
-        f"🔹 <b>RSI (14):</b> <code>{result['rsi']}</code>\n"
-        f"📊 <b>Bollinger Upper:</b> <code>{result['upper_band']}</code>\n"
-        f"📊 <b>Bollinger Lower:</b> <code>{result['lower_band']}</code>\n"
-        f"───────────────────\n"
+        f"📊 تحليل منصة Pocket Option\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"💱 الأصل المالي: {name}\n"
+        f"⏱️ الإطار الزمني: {tf_display}\n"
+        f"📈 حالة الاتجاه: {result['trend']}\n"
+        f"💵 السعر الحالي: {result['price']}\n\n"
+        f"🔍 قراءات المؤشرات:\n"
+        f"🔹 RSI (14): {result['rsi']}\n"
+        f"📊 Bollinger Upper: {result['upper_band']}\n"
+        f"📊 Bollinger Lower: {result['lower_band']}\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
         f"{rec_text}"
     )
+
+    keyboard = [
+        [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
+        [
+            InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"select_{symbol}_{name}_5m"),
+            InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"select_{symbol}_{name}_15m")
+        ],
+        [
+            InlineKeyboardButton("⏱️ 30 دقيقة", callback_data=f"select_{symbol}_{name}_30m"),
+            InlineKeyboardButton("⏱️ ساعة كاملة", callback_data=f"select_{symbol}_{name}_1h")
+        ],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
+    ]
+    
+    # بدون parse_mode لضمان ظهور النص بشكل سليم ومرتب وبدون رموز أكواد
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    
 
     keyboard = [
         [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
