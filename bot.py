@@ -13,10 +13,11 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 TOKEN = "8920172447:AAFVnY7aZob1u9iNrZ7ULBagZ7kDbFCF_m8"
 
 # ---------------------------------------------------------
-# 1. قائمة الأصول المالية منصة بوكيت أوبشن
+# 1. قائمة الأصول المالية منصة بوكيت أوبشن (تمت إضافة EUR/USD)
 # ---------------------------------------------------------
 ASSETS = {
     "otc_high": {
+        "🇪🇺🇺🇸 EUR/USD OTC": "EURUSD=X",  # تم التخصيص والإضافة هنا
         "🇦🇪 AED/CNY OTC": "AEDCNY=X",
         "🇳🇬 NGN/USD OTC": "NGNUSD=X",
         "🇪🇺 EUR/NZD OTC": "EURNZD=X",
@@ -25,14 +26,13 @@ ASSETS = {
         "🇨🇭 EUR/CHF OTC": "EURCHF=X",
         "🇪🇬 USD/EGP OTC": "USDEGP=X",
         "🇯🇵 AUD/JPY OTC": "AUDJPY=X",
-        "🇺🇸 AUD/USD OTC": "AUDUSD=X",
-        "🇭🇺 EUR/HUF OTC": "EURHUF=X"
+        "🇺🇸 AUD/USD OTC": "AUDUSD=X"
     },
     "otc_forex": {
         "🇲🇦 MAD/USD OTC": "MADUSD=X",
         "🇯🇵 USD/JPY OTC": "USDJPY=X",
         "🇪🇺 EUR/JPY OTC": "EURJPY=X",
-        "🇩🇿 USD/DZD OTC": "USDDZD=X",
+        "🇩ℤ USD/DZD OTC": "USDDZD=X",
         "🇮🇩 USD/IDR OTC": "USDIDR=X",
         "🇹🇭 USD/THB OTC": "USDTHB=X",
         "🇨🇦 USD/CAD OTC": "USDCAD=X",
@@ -94,19 +94,15 @@ ASSETS = {
 }
 
 # ---------------------------------------------------------
-# 2. خوارزمية التحليل الفني المحدثة والمتوازنة
+# 2. خوارزمية التحليل الفني
 # ---------------------------------------------------------
-def analyze_market(ticker_symbol, timeframe='5m'):
+def analyze_market(ticker_symbol, timeframe='5s'):
     try:
-        interval_map = {'5m': '5m', '15m': '15m', '30m': '30m', '1h': '60m'}
-        yf_interval = interval_map.get(timeframe, '5m')
+        # جلب البيانات اللحظية بأسرع إطار (1m) لضمان الدقة
+        data = yf.download(tickers=ticker_symbol, period='1d', interval='1m', progress=False)
         
-        # جلب بيانات الأيام الأخيرة
-        data = yf.download(tickers=ticker_symbol, period='5d', interval=yf_interval, progress=False)
-        
-        # إذا لم تتوفر بيانات للزوج بـ 5m نرفع الفترة لـ 1d للتأكد من القراءة
         if data.empty or len(data) < 15:
-            data = yf.download(tickers=ticker_symbol, period='1mo', interval='1d', progress=False)
+            data = yf.download(tickers=ticker_symbol, period='5d', interval='5m', progress=False)
             
         if data.empty or len(data) < 5:
             return None
@@ -120,7 +116,6 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         
-        # حماية من القسمة على صفر
         loss = loss.replace(0, 0.00001)
         rs = gain / loss
         rsi_series = 100 - (100 / (1 + rs))
@@ -137,15 +132,13 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1]) if not sma20.dropna().empty else float(close.iloc[-1] * 0.99)
         current_price = float(close.iloc[-1])
 
-        # منطق ديناميكي متوازن لإعطاء إشارات متنوعة (شراء / بيع / انتظار)
+        # تحديد الإشارة
         signal = "WAIT"
         trend_desc = "اتجاه محايد / تذبذب ⚪"
 
-        # شروط الشراء (CALL)
         if current_price <= lower_band or rsi < 35 or (ema9 > ema21 and rsi < 55):
             signal = "BUY"
             trend_desc = "اتجاه صاعد (BUY) 🟢"
-        # شروط البيع (PUT)
         elif current_price >= upper_band or rsi > 65 or (ema9 < ema21 and rsi > 45):
             signal = "SELL"
             trend_desc = "اتجاه هابط (SELL) 🔴"
@@ -166,11 +159,11 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         return None
 
 # ---------------------------------------------------------
-# 3. معالجة واجهة أزرار تلغرام
+# 3. معالجة الواجهات والأزرار الجديدة للتايم فريم
 # ---------------------------------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🔥 عملات OTC (نسب عالية 1)", callback_data='cat_otc_high')],
+        [InlineKeyboardButton("🔥 عملات OTC (أعلى نسبة + EUR/USD)", callback_data='cat_otc_high')],
         [InlineKeyboardButton("🌐 عملات OTC (مجموعة 2)", callback_data='cat_otc_forex')],
         [InlineKeyboardButton("💱 عملات OTC (مجموعة 3)", callback_data='cat_otc_global')],
         [InlineKeyboardButton("📌 عملات OTC (باقي الأزواج)", callback_data='cat_otc_more')],
@@ -209,24 +202,30 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer("جاري تحليل المؤشرات الفنية (RSI, Bollinger Bands)...")
+    await query.answer("جاري تحليل المؤشرات الفنية والسوق...")
     
     parts = query.data.split('_')
     symbol = parts[1]
     name = parts[2]
-    timeframe = parts[3] if len(parts) > 3 else '5m'
+    timeframe = parts[3] if len(parts) > 3 else '5s'
     
     result = analyze_market(symbol, timeframe)
     
     if not result:
         await query.edit_message_text(
-            "⚠️ السوق مغلق حالياً لهذا الأصل أو تعذر جلب البيانات اللحظية، يرجى تجربة أصل آخر.",
+            "⚠️ تعذر جلب البيانات اللحظية، يرجى اختيار أصل آخر.",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]])
         )
         return
 
-    tf_labels = {"5m": "M5 (5 دقائق)", "15m": "M15 (15 دقيقة)", "30m": "M30 (30 دقيقة)", "1h": "H1 (ساعة)"}
-    tf_display = tf_labels.get(timeframe, "M5")
+    tf_labels = {
+        "5s": "S5 (5 ثوانٍ)", 
+        "10s": "S10 (10 ثوانٍ)", 
+        "15s": "S15 (15 ثانية)", 
+        "30s": "S30 (30 ثانية)", 
+        "1m": "M1 (دقيقة واحدة)"
+    }
+    tf_display = tf_labels.get(timeframe, "S5 (5 ثوانٍ)")
     
     if result['signal'] == "BUY":
         rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء)"
@@ -250,15 +249,19 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{rec_text}"
     )
 
+    # الأزرار الجديدة للأطر الزمنية السريعة (5 ثوانٍ، 10 ثوانٍ، 15 ثانية، 30 ثانية، دقيقة)
     keyboard = [
         [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
         [
-            InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"select_{symbol}_{name}_5m"),
-            InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"select_{symbol}_{name}_15m")
+            InlineKeyboardButton("⚡ 5 ثوانٍ", callback_data=f"select_{symbol}_{name}_5s"),
+            InlineKeyboardButton("⚡ 10 ثوانٍ", callback_data=f"select_{symbol}_{name}_10s")
         ],
         [
-            InlineKeyboardButton("⏱️ 30 دقيقة", callback_data=f"select_{symbol}_{name}_30m"),
-            InlineKeyboardButton("⏱️ ساعة كاملة", callback_data=f"select_{symbol}_{name}_1h")
+            InlineKeyboardButton("⚡ 15 ثانية", callback_data=f"select_{symbol}_{name}_15s"),
+            InlineKeyboardButton("⚡ 30 ثانية", callback_data=f"select_{symbol}_{name}_30s")
+        ],
+        [
+            InlineKeyboardButton("⏱️ دقيقة واحدة (1m)", callback_data=f"select_{symbol}_{name}_1m")
         ],
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
     ]
@@ -276,11 +279,12 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_category, pattern='^cat_'))
     app.add_handler(CallbackQueryHandler(send_signal, pattern='^select_'))
 
-    print("🤖 Bot is running successfully...")
+    print("🤖 Bot is running with quick timeframes & EUR/USD...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
     
     
         
