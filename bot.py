@@ -6,13 +6,10 @@ import numpy as np
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.request import HTTPXRequest
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-
 # 1. إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
-# 2. التوكن الخاص بالبوت
-TOKEN = "8920172447:AAEYfghaaLEUsw0unEBHESKOQrscwZX5ejM"
-
+# بدلاً من كتابة التوكن مباشرة، يقرأه البوت من إعدادات Render:
+TOKEN = os.getenv("TELEGRAM_TOKEN", "8920172447:AAEYfghaaLEUsw0unEBHESKOQrscwZX5ejM")
 # --------------------------------------------------
 # 3. قاموس الأصول الشامل (ASSETS) من الصور
 # --------------------------------------------------
