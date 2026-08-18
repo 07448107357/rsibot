@@ -235,17 +235,18 @@ async def post_init(app: Application) -> None:
         print(f"⚠️ Webhook clear failed: {e}")
 
 # --------------------------------------------------
-# 5. تشغيل البوت (Main)
+# 5. تشغيل البوت (Main) مع معالجة مهلة الاتصال (TimedOut)
 # --------------------------------------------------
 
 def main():
     print("🚀 Starting Bot Setup...")
     
+    # زيادة مهلة الاتصال وتفادي خطأ TimedOut
     request = HTTPXRequest(
-        connect_timeout=30.0,
-        read_timeout=30.0,
-        write_timeout=30.0,
-        pool_timeout=30.0
+        connect_timeout=60.0,
+        read_timeout=60.0,
+        write_timeout=60.0,
+        pool_timeout=60.0
     )
 
     app = (
@@ -265,10 +266,13 @@ def main():
     app.add_handler(CallbackQueryHandler(send_signal, pattern="^update_signal$"))
 
     print("🤖 Bot is officially running and listening for messages...")
-    app.run_polling(poll_interval=1.0, timeout=20)
+    
+    # drop_pending_updates=True تمنع تكدس الرسائل والـ TimedOut عند البداية
+    app.run_polling(poll_interval=2.0, timeout=30, drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
     
     
     
