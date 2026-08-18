@@ -13,7 +13,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 TOKEN = "8920172447:AAFVnY7aZob1u9iNrZ7ULBagZ7kDbFCF_m8"
 
 # ---------------------------------------------------------
-# 1. قائمة الأصول المالية منصة بوكيت أوبشن (تتضمن EUR/USD OTC)
+# 1. قائمة الأصول المالية
 # ---------------------------------------------------------
 ASSETS = {
     "otc_high": {
@@ -94,11 +94,10 @@ ASSETS = {
 }
 
 # ---------------------------------------------------------
-# 2. خوارزمية التحليل الفني
+# 2. خوارزمية التحليل الفني المعدلة (تتبع الاتجاه لمنع الصفقات العكسية)
 # ---------------------------------------------------------
 def analyze_market(ticker_symbol, timeframe='5m'):
     try:
-        # تحديد الفاصل الزمني المطلوب لجلب البيانات
         if timeframe in ['5s', '10s', '15s', '30s', '1m', '2m', '3m']:
             fetch_interval = '1m'
             period_val = '1d'
@@ -111,10 +110,10 @@ def analyze_market(ticker_symbol, timeframe='5m'):
 
         data = yf.download(tickers=ticker_symbol, period=period_val, interval=fetch_interval, progress=False)
         
-        if data.empty or len(data) < 15:
+        if data.empty or len(data) < 20:
             data = yf.download(tickers=ticker_symbol, period='5d', interval='5m', progress=False)
             
-        if data.empty or len(data) < 5:
+        if data.empty or len(data) < 10:
             return None
 
         close = data['Close'].squeeze()
@@ -125,36 +124,45 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        
         loss = loss.replace(0, 0.00001)
         rs = gain / loss
         rsi_series = 100 - (100 / (1 + rs))
         rsi = float(rsi_series.dropna().iloc[-1]) if not rsi_series.dropna().empty else 50.0
 
-        # 2. EMA (9 و 21)
+        # 2. حساب المتوسطات المتحركة لتحديد الاتجاه العام (EMA 9 و EMA 21)
         ema9 = float(close.ewm(span=9, adjust=False).mean().iloc[-1])
         ema21 = float(close.ewm(span=21, adjust=False).mean().iloc[-1])
 
         # 3. Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
         std20 = close.rolling(window=20).std()
-        upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1]) if not sma20.dropna().empty else float(close.iloc[-1] * 1.01)
-        lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1]) if not sma20.dropna().empty else float(close.iloc[-1] * 0.99)
+        upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1])
+        lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
         current_price = float(close.iloc[-1])
 
-        # تحديد الإشارة
+        # 4. منطق فلترة الاتجاه الدقيق (منع التوصيات العكسية)
         signal = "WAIT"
         trend_desc = "اتجاه محايد / تذبذب ⚪"
 
-        if current_price <= lower_band or rsi < 35 or (ema9 > ema21 and rsi < 55):
+        is_downtrend = ema9 < ema21 and current_price < sma20.iloc[-1]
+        is_uptrend = ema9 > ema21 and current_price > sma20.iloc[-1]
+
+        # الشراء فقط عند الاتجاه الصاعد أو التشبع البيعي الحقيقي جداً
+        if is_uptrend and rsi > 45 and rsi < 70:
             signal = "BUY"
-            trend_desc = "اتجاه صاعد (BUY) 🟢"
-        elif current_price >= upper_band or rsi > 65 or (ema9 < ema21 and rsi > 45):
+            trend_desc = "اتجاه صاعد قادم (BUY) 🟢"
+        elif is_downtrend and rsi < 55 and rsi > 30:
             signal = "SELL"
-            trend_desc = "اتجاه هابط (SELL) 🔴"
+            trend_desc = "اتجاه هابط قادم (SELL) 🔴"
+        elif rsi <= 30 and current_price <= lower_band:
+            signal = "BUY"
+            trend_desc = "تشبع بيعي قوي - ارتداد صاعد 🟢"
+        elif rsi >= 70 and current_price >= upper_band:
+            signal = "SELL"
+            trend_desc = "تشبع شرائي قوي - ارتداد هابط 🔴"
         else:
             signal = "WAIT"
-            trend_desc = "اتجاه محايد / تذبذب ⚪"
+            trend_desc = "السوق غير مستقر / انتظار ⚪"
 
         return {
             "rsi": round(rsi, 2),
@@ -169,7 +177,7 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         return None
 
 # ---------------------------------------------------------
-# 3. معالجة الواجهات وجميع الأطر الزمنية
+# 3. معالجة الواجهات
 # ---------------------------------------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -212,7 +220,7 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer("جاري تحليل المؤشرات الفنية والسوق...")
+    await query.answer("جاري تحليل المؤشرات الاتجاهية والسوق...")
     
     parts = query.data.split('_')
     symbol = parts[1]
@@ -228,28 +236,19 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # أسماء الأطر الزمنية للعرض
     tf_labels = {
-        "5s": "⚡ 5 ثوانٍ", 
-        "10s": "⚡ 10 ثوانٍ", 
-        "15s": "⚡ 15 ثانية", 
-        "30s": "⚡ 30 ثانية", 
-        "1m": "⏱️ دقيقة (1m)",
-        "2m": "⏱️ دقيقتين (2m)",
-        "3m": "⏱️ 3 دقائق (3m)",
-        "5m": "⏱️ 5 دقائق (5m)",
-        "15m": "⏱️ 15 دقيقة (15m)",
-        "30m": "⏱️ 30 دقيقة (30m)",
-        "1h": "⏱️ ساعة كاملة (1h)"
+        "5s": "⚡ 5 ثوانٍ", "10s": "⚡ 10 ثوانٍ", "15s": "⚡ 15 ثانية", "30s": "⚡ 30 ثانية",
+        "1m": "⏱️ دقيقة (1m)", "2m": "⏱️ دقيقتين (2m)", "3m": "⏱️ 3 دقائق (3m)",
+        "5m": "⏱️ 5 دقائق (5m)", "15m": "⏱️ 15 دقيقة (15m)", "30m": "⏱️ 30 دقيقة (30m)", "1h": "⏱️ ساعة كاملة (1h)"
     }
     tf_display = tf_labels.get(timeframe, "⏱️ 5 دقائق (5m)")
     
     if result['signal'] == "BUY":
-        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء)"
+        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء مع الاتجاه)"
     elif result['signal'] == "SELL":
-        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع)"
+        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع مع الاتجاه)"
     else:
-        rec_text = "🎯 التوصية: ⚪ WAIT (انتظار / عدم دخول)"
+        rec_text = "🎯 التوصية: ⚪ WAIT (انتظار - الاتجاه غير واضح)"
 
     text = (
         f"📊 تحليل منصة Pocket Option\n"
@@ -266,11 +265,8 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{rec_text}"
     )
 
-    # 🎛️ قائمة جميع الأطر الزمنية منسقة بأسلوب ممتاذ ومريح للعين
     keyboard = [
         [InlineKeyboardButton("🔄 تحديث التوصية", callback_data=f"select_{symbol}_{name}_{timeframe}")],
-        
-        # الأطر الزمنية الخاطفة (بالثواني)
         [
             InlineKeyboardButton("⚡ 5 ثوانٍ", callback_data=f"select_{symbol}_{name}_5s"),
             InlineKeyboardButton("⚡ 10 ثوانٍ", callback_data=f"select_{symbol}_{name}_10s")
@@ -279,15 +275,11 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("⚡ 15 ثانية", callback_data=f"select_{symbol}_{name}_15s"),
             InlineKeyboardButton("⚡ 30 ثانية", callback_data=f"select_{symbol}_{name}_30s")
         ],
-        
-        # الأطر الزمنية القصيرة (بالدقائق)
         [
             InlineKeyboardButton("⏱️ 1 دقيقة", callback_data=f"select_{symbol}_{name}_1m"),
             InlineKeyboardButton("⏱️ 2 دقيقة", callback_data=f"select_{symbol}_{name}_2m"),
             InlineKeyboardButton("⏱️ 3 دقائق", callback_data=f"select_{symbol}_{name}_3m")
         ],
-        
-        # الأطر الزمنية المتوسطة والطويلة
         [
             InlineKeyboardButton("⏱️ 5 دقائق", callback_data=f"select_{symbol}_{name}_5m"),
             InlineKeyboardButton("⏱️ 15 دقيقة", callback_data=f"select_{symbol}_{name}_15m")
@@ -296,7 +288,6 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("⏱️ 30 دقيقة", callback_data=f"select_{symbol}_{name}_30m"),
             InlineKeyboardButton("⏱️ ساعة كاملة", callback_data=f"select_{symbol}_{name}_1h")
         ],
-        
         [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
     ]
     
@@ -313,11 +304,12 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_category, pattern='^cat_'))
     app.add_handler(CallbackQueryHandler(send_signal, pattern='^select_'))
 
-    print("🤖 Bot is running with ALL timeframes & EUR/USD...")
+    print("🤖 Bot updated with Trend Following Filters...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
         
     
     
