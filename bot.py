@@ -265,10 +265,16 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 4. تشغيل البوت
 # --------------------------------------------------
 async def post_init(app: Application) -> None:
-    await app.bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await app.bot.delete_webhook(drop_pending_updates=True)
+        print("✅ Webhook cleared successfully!")
+    except Exception as e:
+        print(f"⚠️ Webhook clear failed: {e}")
 
 def main():
-    # رفع مهلة الانتظار إلى 30 ثانية لمنع خطأ TimedOut
+    print("🚀 Starting Bot Setup...")
+    
+    # رفع مهلة الانتظار
     request = HTTPXRequest(
         connect_timeout=30.0,
         read_timeout=30.0,
@@ -284,16 +290,18 @@ def main():
         .build()
     )
 
-       # ربط الأزرار بالدوال الصحيحة
+    # Handlers
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(handle_timeframe, pattern="^(1m|2m|3m|5m|15m|30m|1h|5s|10s|15s|30s)$"))
     app.add_handler(CallbackQueryHandler(send_signal, pattern="^update_signal$"))
     app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
-    
-    # استخدام CallbackQueryHandler الشامل لكل الأزرار منعاً لأخطاء التسمية
-    app.add_handler(CallbackQueryHandler(start))
 
-    print("🤖 Bot is running successfully...")
-    app.run_polling()
+    print("🤖 Bot is officially running and listening for messages...")
+    app.run_polling(poll_interval=1.0, timeout=20)
+
+if __name__ == "__main__":
+    main()
+    
     
     
     
