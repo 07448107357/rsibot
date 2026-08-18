@@ -4,6 +4,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.request import HTTPXRequest
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
