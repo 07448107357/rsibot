@@ -8,7 +8,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
 # 🔑 ضع/ضعي التوكن الخاص بك هنا بين علامات التنصيص
 TOKEN = "8920172447:AAELIIm6dvPjS-oFQA0Mk6Lou3EfLHAB7TY"
 
