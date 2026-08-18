@@ -135,17 +135,19 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
         
         last_close = float(close.iloc[-1])
+        # جعل الشرط يعتمد على RSI بشكل أوسع (مثلاً تحت 45 للشراء وفوق 55 للبيع):
+if rsi <= 45:
+    signal = "BUY"
+    trend_desc = "إشارة شراء سريعة (RSI منخفض) 🟢"
+elif rsi >= 55:
+    signal = "SELL"
+    trend_desc = "إشارة بيع سريعة (RSI مرتفع) 🔴"
+else:
+    signal = "WAIT"
+    trend_desc = "السوق في منطقة تذبذب / انتظار ⚪"
+    
 
-        # 3. إشارات التداول المباشرة السريعة (40 / 60)
-        if rsi <= 40 and last_close <= lower_band:
-            signal = "BUY"
-            trend_desc = "صعود بعد تشبع بيعي 🟢"
-        elif rsi >= 60 and last_close >= upper_band:
-            signal = "SELL"
-            trend_desc = "هبوط بعد تشبع شرائي 🔴"
-        else:
-            signal = "WAIT"
-            trend_desc = "السوق في منطقة تذبذب / انتظار ⚪"
+        
 
         return {
             "rsi": round(rsi, 2),
