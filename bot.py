@@ -185,7 +185,10 @@ async def handle_category(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer("جاري تحليل المؤشرات الاتجاهية والسوق...")
+        # ربط الأزرار بالدوال الصحيحة
+    app.add_handler(CallbackQueryHandler(handle_timeframe, pattern="^(1m|2m|3m|5m|15m|30m|1h|5s|10s|15s|30s)$"))
+    app.add_handler(CallbackQueryHandler(send_signal, pattern="^update_signal$"))
+    app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
     
     parts = query.data.split('_')
     symbol = parts[1]
