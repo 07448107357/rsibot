@@ -94,85 +94,48 @@ ASSETS = {
 # ---------------------------------------------------------
 # 2. خوارزمية التحليل الفني المحدثة (تتبع لون الشمعة والاتجاه)
 # ---------------------------------------------------------
-def analyze_market(ticker_symbol, timeframe='5m'):
+def analyze_market(df):
     try:
-        # 1. تحديد إطار جلب البيانات
-        if timeframe in ['5s', '10s', '15s', '30s', '1m', '2m', '3m']:
-            fetch_interval = '1m'
-            period_val = '1d'
-        elif timeframe in ['5m', '15m', '30m']:
-            fetch_interval = '5m'
-            period_val = '5d'
-        else:
-            fetch_interval = '1h'
-            period_val = '1mo'
-
-        data = yf.download(tickers=ticker_symbol, period=period_val, interval=fetch_interval, progress=False)
+        close = df['close']
         
-        # التأكد من وجود بيانات كافية للحسابات (نحتاج 50 شمعة على الأقل للحسابات الدقيقة)
-        if data.empty or len(data) < 50:
-            data = yf.download(tickers=ticker_symbol, period='5d', interval='5m', progress=False)
-            
-        if data.empty or len(data) < 50:
-            return None
-
-        close = data['Close'].squeeze()
-
-        if isinstance(close, pd.DataFrame):
-            close = close.iloc[:, 0]
-
-        # 2. حساب RSI (14)
+        # 1. حساب RSI
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        loss = loss.replace(0, 0.00001)
         rs = gain / loss
-        rsi_series = 100 - (100 / (1 + rs))
-        rsi = float(rsi_series.dropna().iloc[-1]) if not rsi_series.dropna().empty else 50.0
+        rsi = float((100 - (100 / (1 + rs))).dropna().iloc[-1])
 
-        # 3. حساب Bollinger Bands (20, 2)
+        # 2. حساب Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
         std20 = close.rolling(window=20).std()
         upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1])
         lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
-        
-        # 4. حساب الاتجاه العام باستعمال SMA 50 (مؤشر أمان إضافي)
-        sma50 = float(close.rolling(window=50).mean().dropna().iloc[-1])
-        
+
+        # 3. السعر الحالي
         last_close = float(close.iloc[-1])
 
-            # 3. حساب Bollinger Bands (20, 2)
-    sma20 = close.rolling(window=20).mean()
-    std20 = close.rolling(window=20).std()
-    upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1])
-    lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
+        # 4. شروط التداول المرنة
+        if rsi <= 40 and last_close <= lower_band * 1.0005:
+            signal = "BUY 🟢"
+            trend_desc = "شراء (تشبع بيعي واقتراب من دعم البولنجر)"
+        elif rsi >= 60 and last_close >= upper_band * 0.9995:
+            signal = "SELL 🔴"
+            trend_desc = "بيع (تشبع شرائي واقتراب من مقاومة البولنجر)"
+        else:
+            signal = "WAIT ⚪"
+            trend_desc = "انتظار (السوق في منطقة محايدة)"
 
-    # 4. سعر الإغلاق الحالي
-    last_close = float(close.iloc[-1])
+        return {
+            "rsi": round(rsi, 2),
+            "price": round(last_close, 5),
+            "upper_band": round(upper_band, 5),
+            "lower_band": round(lower_band, 5),
+            "trend": trend_desc,
+            "signal": signal
+        }
 
-    # 5. شروط التداول المرنة
-    if rsi <= 40 and last_close <= lower_band * 1.0005:
-        signal = "BUY 🟢"
-        trend_desc = "شراء (تشبع بيعي واقتراب من دعم البولنجر)"
-
-    elif rsi >= 60 and last_close >= upper_band * 0.9995:
-        signal = "SELL 🔴"
-        trend_desc = "بيع (تشبع شرائي واقتراب من مقاومة البولنجر)"
-
-    else:
-        signal = "WAIT ⚪"
-        trend_desc = "انتظار (السوق في منطقة محايدة)"
-
-    return {
-        "rsi": round(rsi, 2),
-        "price": round(last_close, 5),
-        "upper_band": round(upper_band, 5),
-        "lower_band": round(lower_band, 5),
-        "trend": trend_desc,
-        "signal": signal
-    }
     except Exception as e:
-        logging.error(f"Error analyzing {ticker_symbol}: {e}")
+        print(f"Error in analyze_market: {e}")
         return None
         
         
