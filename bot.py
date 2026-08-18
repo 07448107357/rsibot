@@ -8,7 +8,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 # 🔑 ضع/ضعي التوكن الخاص بك هنا بين علامات التنصيص
-TOKEN = "8920172447:AAEulwEIm-ArD5hsqV-uwrE5Z2EyOTRoPek"
+TOKEN = "8920172447:AAErm3oScTsJNnOrQLzmCsmLQxZCckLL26M"
 # ---------------------------------------------------------
 # 1. قائمة الأصول المالية (تم إضافة EUR/GBP OTC)
 # ---------------------------------------------------------
