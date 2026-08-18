@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -224,12 +225,16 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.edit_message_text(signal_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
-async def post_init(app: Application) -> None:
-    try:
-        await app.bot.delete_webhook(drop_pending_updates=True)
-        print("✅ Webhook cleared successfully!")
-    except Exception as e:
-        print(f"⚠️ Webhook clear failed: {e}")
+  async def post_init(app: Application) -> None:
+    """دالة لتهيئة الاتصال وتنظيف الـ Webhooks القديمة"""
+    for attempt in range(3):
+        try:
+            await app.bot.delete_webhook(drop_pending_updates=True)
+            print("✅ Webhook cleared successfully!")
+            break
+        except Exception as e:
+            print(f"⚠️ Attempt {attempt + 1} failed: {e}")
+            await asyncio.sleep(3)
 
 # --------------------------------------------------
 # 5. تشغيل البوت (Main) مع معالجة مهلة الاتصال (TimedOut)
@@ -238,12 +243,18 @@ async def post_init(app: Application) -> None:
 def main():
     print("🚀 Starting Bot Setup...")
     
-    # زيادة مهلة الاتصال وتفادي خطأ TimedOut
+    # الحصول على التوكن من متغيرات البيئة
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
+    if not TOKEN:
+        TOKEN = "8920172447:AAEYfghaaLEUswOunEBHESKOQrscwZX5ejM"
+
+    # رفع وقت المهلة وإضافة إعادة المحاولة التلقائية
     request = HTTPXRequest(
         connect_timeout=60.0,
         read_timeout=60.0,
         write_timeout=60.0,
-        pool_timeout=60.0
+        pool_timeout=60.0,
+        http_version="1.1"
     )
 
     app = (
@@ -254,7 +265,7 @@ def main():
         .build()
     )
 
-    # تسجيل الموجهات
+    # تسجيل الموجهات (Handlers)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
     app.add_handler(CallbackQueryHandler(show_category, pattern="^cat_"))
@@ -264,12 +275,15 @@ def main():
 
     print("🤖 Bot is officially running and listening for messages...")
     
-    # drop_pending_updates=True تمنع تكدس الرسائل والـ TimedOut عند البداية
-    app.run_polling(poll_interval=2.0, timeout=30, drop_pending_updates=True)
+    # تشغيل البوت
+    app.run_polling(
+        poll_interval=2.0,
+        timeout=30,
+        drop_pending_updates=True
+    )
 
 if __name__ == "__main__":
     main()
-    
     
     
     
