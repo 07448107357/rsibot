@@ -257,22 +257,40 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-# ---------------------------------------------------------
+# --------------------------------------------------
 # 4. تشغيل البوت
-# ---------------------------------------------------------
+# --------------------------------------------------
+async def post_init(app: Application) -> None:
+    await app.bot.delete_webhook(drop_pending_updates=True)
+
 def main():
-    app = Application.builder().token(TOKEN).build()
+    # رفع مهلة الانتظار إلى 30 ثانية لمنع خطأ TimedOut
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=30.0
+    )
+
+    app = (
+        Application.builder()
+        .token(TOKEN)
+        .request(request)
+        .post_init(post_init)
+        .build()
+    )
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(start, pattern='^main_menu$'))
-    app.add_handler(CallbackQueryHandler(handle_category, pattern='^cat_'))
-    app.add_handler(CallbackQueryHandler(send_signal, pattern='^select_'))
+    app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
+    app.add_handler(CallbackQueryHandler(handle_timeframe, pattern="^(1m|2m|3m|5m|15m|30m|1h|5s|10s|15s|30s)$"))
+    app.add_handler(CallbackQueryHandler(send_signal, pattern="^update_signal$"))
 
     print("🤖 Bot is running successfully...")
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
+    
     
     
     
