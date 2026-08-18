@@ -9,15 +9,16 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# 🔑 ضعي/ضع التوكن الخاص بك هنا
+# 🔑 ضع/ضعي التوكن الخاص بك هنا بين علامات التنصيص
 TOKEN = "8920172447:AAELIIm6dvPjS-oFQA0Mk6Lou3EfLHAB7TY"
 
 # ---------------------------------------------------------
-# 1. قائمة الأصول المالية
+# 1. قائمة الأصول المالية (تم إضافة EUR/GBP OTC)
 # ---------------------------------------------------------
 ASSETS = {
     "otc_high": {
         "🇪🇺🇺🇸 EUR/USD OTC": "EURUSD=X",
+        "🇪🇺🇬🇧 EUR/GBP OTC": "EURGBP=X",
         "🇦🇪 AED/CNY OTC": "AEDCNY=X",
         "🇳🇬 NGN/USD OTC": "NGNUSD=X",
         "🇪🇺 EUR/NZD OTC": "EURNZD=X",
@@ -314,6 +315,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
     
     
         
