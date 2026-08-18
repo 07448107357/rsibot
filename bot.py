@@ -225,7 +225,7 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.edit_message_text(signal_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
-  async def post_init(app: Application) -> None:
+async def post_init(app: Application) -> None:
     """دالة لتهيئة الاتصال وتنظيف الـ Webhooks القديمة"""
     for attempt in range(3):
         try:
