@@ -143,12 +143,12 @@ def analyze_market(ticker_symbol, timeframe='5m'):
 
         # 5. شروط التداول الآمنة (الفلترة المزدوجة):
         # شرط الشراء: التشبع البيعي + السعر أعلى من SMA 50 (الاتجاه العام صاعد)
-        if rsi <= 35 and last_close <= lower_band and last_close > sma50:
+        if rsi <= 40 and last_close <= lower_band and last_close > sma50:
             signal = "BUY"
             trend_desc = "شراء آمن مع اتجاه صاعد 🟢"
         
         # شرط البيع: التشبع الشرائي + السعر أدنى من SMA 50 (الاتجاه العام هابط)
-        elif rsi >= 65 and last_close >= upper_band and last_close < sma50:
+        elif rsi >= 60 and last_close >= upper_band and last_close < sma50:
             signal = "SELL"
             trend_desc = "بيع آمن مع اتجاه هابط 🔴"
         
