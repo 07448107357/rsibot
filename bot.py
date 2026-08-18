@@ -117,8 +117,12 @@ def analyze_market(ticker_symbol, timeframe='5m'):
             return None
 
         close = data['Close'].squeeze()
+        open_p = data['Open'].squeeze()
+
         if isinstance(close, pd.DataFrame):
             close = close.iloc[:, 0]
+        if isinstance(open_p, pd.DataFrame):
+            open_p = open_p.iloc[:, 0]
 
         # 1. حساب RSI (14)
         delta = close.diff()
@@ -129,44 +133,47 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         rsi_series = 100 - (100 / (1 + rs))
         rsi = float(rsi_series.dropna().iloc[-1]) if not rsi_series.dropna().empty else 50.0
 
-        # 2. حساب المتوسطات المتحركة لتحديد الاتجاه العام (EMA 9 و EMA 21)
-        ema9 = float(close.ewm(span=9, adjust=False).mean().iloc[-1])
-        ema21 = float(close.ewm(span=21, adjust=False).mean().iloc[-1])
-
-        # 3. Bollinger Bands (20, 2)
+        # 2. حساب Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
         std20 = close.rolling(window=20).std()
         upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1])
         lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
-        current_price = float(close.iloc[-1])
+        
+        last_close = float(close.iloc[-1])
+        last_open = float(open_p.iloc[-1])
 
-        # 4. منطق فلترة الاتجاه الدقيق (منع التوصيات العكسية)
+        # 3. شرط التأكد من الشمعة الحالية والاتجاه لمنع التوصيات العكسية
         signal = "WAIT"
-        trend_desc = "اتجاه محايد / تذبذب ⚪"
+        trend_desc = "السوق غير مستقر / انتظار ⚪"
 
-        is_downtrend = ema9 < ema21 and current_price < sma20.iloc[-1]
-        is_uptrend = ema9 > ema21 and current_price > sma20.iloc[-1]
+        # الشمعة خضراء صاعدة (إغلاق أسرع/أعلى من الفتح)
+        is_green_candle = last_close > last_open
+        # الشمعة حمراء هابطة (إغلاق أقل من الفتح)
+        is_red_candle = last_close < last_open
 
-        # الشراء فقط عند الاتجاه الصاعد أو التشبع البيعي الحقيقي جداً
-        if is_uptrend and rsi > 45 and rsi < 70:
-            signal = "BUY"
-            trend_desc = "اتجاه صاعد قادم (BUY) 🟢"
-        elif is_downtrend and rsi < 55 and rsi > 30:
-            signal = "SELL"
-            trend_desc = "اتجاه هابط قادم (SELL) 🔴"
-        elif rsi <= 30 and current_price <= lower_band:
-            signal = "BUY"
-            trend_desc = "تشبع بيعي قوي - ارتداد صاعد 🟢"
-        elif rsi >= 70 and current_price >= upper_band:
-            signal = "SELL"
-            trend_desc = "تشبع شرائي قوي - ارتداد هابط 🔴"
+        if rsi <= 35 and last_close <= lower_band:
+            if is_green_candle:
+                signal = "BUY"
+                trend_desc = "ارتداد صاعد بعد تشبع بيعي (BUY) 🟢"
+            else:
+                signal = "WAIT"
+                trend_desc = "هبوط حاد - انتظار شمعة ارتداد خضراء ⏳"
+
+        elif rsi >= 65 and last_close >= upper_band:
+            if is_red_candle:
+                signal = "SELL"
+                trend_desc = "ارتداد هابط بعد تشبع شرائي (SELL) 🔴"
+            else:
+                signal = "WAIT"
+                trend_desc = "صعود حاد - انتظار شمعة ارتداد حمراء ⏳"
+
         else:
             signal = "WAIT"
-            trend_desc = "السوق غير مستقر / انتظار ⚪"
+            trend_desc = "السوق في منطقة تذبذب / انتظار ⚪"
 
         return {
             "rsi": round(rsi, 2),
-            "price": round(current_price, 5),
+            "price": round(last_close, 5),
             "upper_band": round(upper_band, 5),
             "lower_band": round(lower_band, 5),
             "trend": trend_desc,
@@ -175,6 +182,7 @@ def analyze_market(ticker_symbol, timeframe='5m'):
     except Exception as e:
         logging.error(f"Error analyzing {ticker_symbol}: {e}")
         return None
+        
 
 # ---------------------------------------------------------
 # 3. معالجة الواجهات
