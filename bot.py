@@ -96,6 +96,7 @@ ASSETS = {
 # ---------------------------------------------------------
 def analyze_market(ticker_symbol, timeframe='5m'):
     try:
+        # 1. تحديد إطار جلب البيانات
         if timeframe in ['5s', '10s', '15s', '30s', '1m', '2m', '3m']:
             fetch_interval = '1m'
             period_val = '1d'
@@ -108,10 +109,11 @@ def analyze_market(ticker_symbol, timeframe='5m'):
 
         data = yf.download(tickers=ticker_symbol, period=period_val, interval=fetch_interval, progress=False)
         
-        if data.empty or len(data) < 20:
+        # التأكد من وجود بيانات كافية للحسابات (نحتاج 50 شمعة على الأقل للحسابات الدقيقة)
+        if data.empty or len(data) < 50:
             data = yf.download(tickers=ticker_symbol, period='5d', interval='5m', progress=False)
             
-        if data.empty or len(data) < 10:
+        if data.empty or len(data) < 50:
             return None
 
         close = data['Close'].squeeze()
@@ -119,7 +121,7 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         if isinstance(close, pd.DataFrame):
             close = close.iloc[:, 0]
 
-        # 1. حساب RSI (14)
+        # 2. حساب RSI (14)
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -128,24 +130,32 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         rsi_series = 100 - (100 / (1 + rs))
         rsi = float(rsi_series.dropna().iloc[-1]) if not rsi_series.dropna().empty else 50.0
 
-        # 2. حساب Bollinger Bands (20, 2)
+        # 3. حساب Bollinger Bands (20, 2)
         sma20 = close.rolling(window=20).mean()
         std20 = close.rolling(window=20).std()
         upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1])
         lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
         
+        # 4. حساب الاتجاه العام باستعمال SMA 50 (مؤشر أمان إضافي)
+        sma50 = float(close.rolling(window=50).mean().dropna().iloc[-1])
+        
         last_close = float(close.iloc[-1])
 
-        # 3. شروط التوصيات السريعة (تعتمد على RSI المفتوح 45 / 55)
-        if rsi <= 45:
+        # 5. شروط التداول الآمنة (الفلترة المزدوجة):
+        # شرط الشراء: التشبع البيعي + السعر أعلى من SMA 50 (الاتجاه العام صاعد)
+        if rsi <= 35 and last_close <= lower_band and last_close > sma50:
             signal = "BUY"
-            trend_desc = "إشارة شراء سريعة 🟢"
-        elif rsi >= 55:
+            trend_desc = "شراء آمن مع اتجاه صاعد 🟢"
+        
+        # شرط البيع: التشبع الشرائي + السعر أدنى من SMA 50 (الاتجاه العام هابط)
+        elif rsi >= 65 and last_close >= upper_band and last_close < sma50:
             signal = "SELL"
-            trend_desc = "إشارة بيع سريعة 🔴"
+            trend_desc = "بيع آمن مع اتجاه هابط 🔴"
+        
+        # في حالة التذبذب أو معاكسة الاتجاه العام
         else:
             signal = "WAIT"
-            trend_desc = "السوق في منطقة تذبذب / انتظار ⚪"
+            trend_desc = "انتظار (السوق غير مستقر أو ضد الاتجاه) ⚪"
 
         return {
             "rsi": round(rsi, 2),
