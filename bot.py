@@ -171,8 +171,6 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         "trend": trend_desc,
         "signal": signal
     }
-    
-        }
     except Exception as e:
         logging.error(f"Error analyzing {ticker_symbol}: {e}")
         return None
