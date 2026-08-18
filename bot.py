@@ -115,12 +115,9 @@ def analyze_market(ticker_symbol, timeframe='5m'):
             return None
 
         close = data['Close'].squeeze()
-        open_p = data['Open'].squeeze()
 
         if isinstance(close, pd.DataFrame):
             close = close.iloc[:, 0]
-        if isinstance(open_p, pd.DataFrame):
-            open_p = open_p.iloc[:, 0]
 
         # 1. حساب RSI (14)
         delta = close.diff()
@@ -138,25 +135,17 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
         
         last_close = float(close.iloc[-1])
-        last_open = float(open_p.iloc[-1])
 
-        # 3. التأكد من لون الشمعة لمنع الصفقات العكسية
-        signal = "WAIT"
-        trend_desc = "السوق غير مستقر / انتظار ⚪"
-
-        is_green_candle = last_close > last_open
-        is_red_candle = last_close < last_open
-
-    if rsi <= 40 and last_close <= lower_band:
-        signal = "BUY"
-        trend_desc = "صعود بعد تشبع بيعي"
-    elif rsi >= 60 and last_close >= upper_band:
-        signal = "SELL"
-        trend_desc = "هبوط بعد تشبع شرائي"
-    else:
-        signal = "WAIT"
-        trend_desc = "السوق في منطقة تذبذب / انتظار"
-        
+        # 3. إشارات التداول المباشرة السريعة (40 / 60)
+        if rsi <= 40 and last_close <= lower_band:
+            signal = "BUY"
+            trend_desc = "صعود بعد تشبع بيعي 🟢"
+        elif rsi >= 60 and last_close >= upper_band:
+            signal = "SELL"
+            trend_desc = "هبوط بعد تشبع شرائي 🔴"
+        else:
+            signal = "WAIT"
+            trend_desc = "السوق في منطقة تذبذب / انتظار ⚪"
 
         return {
             "rsi": round(rsi, 2),
@@ -169,6 +158,7 @@ def analyze_market(ticker_symbol, timeframe='5m'):
     except Exception as e:
         logging.error(f"Error analyzing {ticker_symbol}: {e}")
         return None
+        
 
 # ---------------------------------------------------------
 # 3. معالجة الواجهات
