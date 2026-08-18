@@ -141,21 +141,21 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         
         last_close = float(close.iloc[-1])
 
-        # 5. شروط التداول الآمنة (الفلترة المزدوجة):
-        # شرط الشراء: التشبع البيعي + السعر أعلى من SMA 50 (الاتجاه العام صاعد)
-        if rsi <= 40 and last_close <= lower_band and last_close > sma50:
-            signal = "BUY"
-            trend_desc = "شراء آمن مع اتجاه صاعد 🟢"
-        
-        # شرط البيع: التشبع الشرائي + السعر أدنى من SMA 50 (الاتجاه العام هابط)
-        elif rsi >= 60 and last_close >= upper_band and last_close < sma50:
-            signal = "SELL"
-            trend_desc = "بيع آمن مع اتجاه هابط 🔴"
-        
-        # في حالة التذبذب أو معاكسة الاتجاه العام
-        else:
-            signal = "WAIT"
-            trend_desc = "انتظار (السوق غير مستقر أو ضد الاتجاه) ⚪"
+        # شروط شراء وبيع أكثر مرونة للعملات وأسهم OTC
+
+# شرط الشراء (BUY): عند وصول RSI إلى 40 أو أقل ومع اقتراب السعر من خط البولنجر السفلي
+if rsi <= 40 and last_close <= lower_band * 1.0005:
+    signal = "BUY 🟢"
+    trend_desc = "شراء (تشبع بيعي واقتراب من دعم البولنجر)"
+
+# شرط البيع (SELL): عند وصول RSI إلى 60 أو أعلى ومع اقتراب السعر من خط البولنجر العلوي
+elif rsi >= 60 and last_close >= upper_band * 0.9995:
+    signal = "SELL 🔴"
+    trend_desc = "بيع (تشبع شرائي واقتراب من مقاومة البولنجر)"
+
+else:
+    signal = "WAIT ⚪"
+    trend_desc = "انتظار (السوق في منطقة محايدة)"
 
         return {
             "rsi": round(rsi, 2),
