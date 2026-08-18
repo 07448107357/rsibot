@@ -9,7 +9,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# 🔑 ضع التوكن الخاص بك هنا
+# 🔑 ضعي/ضع التوكن الخاص بك هنا
 TOKEN = "8920172447:AAH0FcDSFn4nDoa7yB5yKpDGrG0kHCynvmE"
 
 # ---------------------------------------------------------
@@ -94,7 +94,7 @@ ASSETS = {
 }
 
 # ---------------------------------------------------------
-# 2. خوارزمية التحليل الفني المعدلة (تتبع الاتجاه لمنع الصفقات العكسية)
+# 2. خوارزمية التحليل الفني المحدثة (تتبع لون الشمعة والاتجاه)
 # ---------------------------------------------------------
 def analyze_market(ticker_symbol, timeframe='5m'):
     try:
@@ -142,13 +142,11 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         last_close = float(close.iloc[-1])
         last_open = float(open_p.iloc[-1])
 
-        # 3. شرط التأكد من الشمعة الحالية والاتجاه لمنع التوصيات العكسية
+        # 3. التأكد من لون الشمعة لمنع الصفقات العكسية
         signal = "WAIT"
         trend_desc = "السوق غير مستقر / انتظار ⚪"
 
-        # الشمعة خضراء صاعدة (إغلاق أسرع/أعلى من الفتح)
         is_green_candle = last_close > last_open
-        # الشمعة حمراء هابطة (إغلاق أقل من الفتح)
         is_red_candle = last_close < last_open
 
         if rsi <= 35 and last_close <= lower_band:
@@ -182,7 +180,6 @@ def analyze_market(ticker_symbol, timeframe='5m'):
     except Exception as e:
         logging.error(f"Error analyzing {ticker_symbol}: {e}")
         return None
-        
 
 # ---------------------------------------------------------
 # 3. معالجة الواجهات
@@ -252,11 +249,11 @@ async def send_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tf_display = tf_labels.get(timeframe, "⏱️ 5 دقائق (5m)")
     
     if result['signal'] == "BUY":
-        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء مع الاتجاه)"
+        rec_text = "🎯 التوصية: 🟢 CALL / BUY (شراء مع الارتداد)"
     elif result['signal'] == "SELL":
-        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع مع الاتجاه)"
+        rec_text = "🎯 التوصية: 🔴 PUT / SELL (بيع مع الارتداد)"
     else:
-        rec_text = "🎯 التوصية: ⚪ WAIT (انتظار - الاتجاه غير واضح)"
+        rec_text = f"🎯 التوصية: ⚪ WAIT ({result['trend']})"
 
     text = (
         f"📊 تحليل منصة Pocket Option\n"
@@ -312,11 +309,12 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_category, pattern='^cat_'))
     app.add_handler(CallbackQueryHandler(send_signal, pattern='^select_'))
 
-    print("🤖 Bot updated with Trend Following Filters...")
+    print("🤖 Bot is running successfully...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
+    
     
         
     
