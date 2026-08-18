@@ -147,25 +147,16 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         is_green_candle = last_close > last_open
         is_red_candle = last_close < last_open
 
-        if rsi <= 40 and last_close <= lower_band:
-            if is_green_candle:
-                signal = "BUY"
-                trend_desc = "ارتداد صاعد بعد تشبع بيعي (BUY) 🟢"
-            else:
-                signal = "WAIT"
-                trend_desc = "هبوط حاد - انتظار شمعة ارتداد خضراء ⏳"
-
-        elif rsi >= 60 and last_close >= upper_band:
-            if is_red_candle:
-                signal = "SELL"
-                trend_desc = "ارتداد هابط بعد تشبع شرائي (SELL) 🔴"
-            else:
-                signal = "WAIT"
-                trend_desc = "صعود حاد - انتظار شمعة ارتداد حمراء ⏳"
-
-        else:
-            signal = "WAIT"
-            trend_desc = "السوق في منطقة تذبذب / انتظار ⚪"
+    if rsi <= 40 and last_close <= lower_band:
+        signal = "BUY"
+        trend_desc = "صعود بعد تشبع بيعي"
+    elif rsi >= 60 and last_close >= upper_band:
+        signal = "SELL"
+        trend_desc = "هبوط بعد تشبع شرائي"
+    else:
+        signal = "WAIT"
+        trend_desc = "السوق في منطقة تذبذب / انتظار"
+        
 
         return {
             "rsi": round(rsi, 2),
