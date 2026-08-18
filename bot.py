@@ -141,29 +141,37 @@ def analyze_market(ticker_symbol, timeframe='5m'):
         
         last_close = float(close.iloc[-1])
 
-        # شروط شراء وبيع أكثر مرونة للعملات وأسهم OTC
+            # 3. حساب Bollinger Bands (20, 2)
+    sma20 = close.rolling(window=20).mean()
+    std20 = close.rolling(window=20).std()
+    upper_band = float((sma20 + (std20 * 2)).dropna().iloc[-1])
+    lower_band = float((sma20 - (std20 * 2)).dropna().iloc[-1])
 
-# شرط الشراء (BUY): عند وصول RSI إلى 40 أو أقل ومع اقتراب السعر من خط البولنجر السفلي
-if rsi <= 40 and last_close <= lower_band * 1.0005:
-    signal = "BUY 🟢"
-    trend_desc = "شراء (تشبع بيعي واقتراب من دعم البولنجر)"
+    # 4. سعر الإغلاق الحالي
+    last_close = float(close.iloc[-1])
 
-# شرط البيع (SELL): عند وصول RSI إلى 60 أو أعلى ومع اقتراب السعر من خط البولنجر العلوي
-elif rsi >= 60 and last_close >= upper_band * 0.9995:
-    signal = "SELL 🔴"
-    trend_desc = "بيع (تشبع شرائي واقتراب من مقاومة البولنجر)"
+    # 5. شروط التداول المرنة
+    if rsi <= 40 and last_close <= lower_band * 1.0005:
+        signal = "BUY 🟢"
+        trend_desc = "شراء (تشبع بيعي واقتراب من دعم البولنجر)"
 
-else:
-    signal = "WAIT ⚪"
-    trend_desc = "انتظار (السوق في منطقة محايدة)"
+    elif rsi >= 60 and last_close >= upper_band * 0.9995:
+        signal = "SELL 🔴"
+        trend_desc = "بيع (تشبع شرائي واقتراب من مقاومة البولنجر)"
 
-        return {
-            "rsi": round(rsi, 2),
-            "price": round(last_close, 5),
-            "upper_band": round(upper_band, 5),
-            "lower_band": round(lower_band, 5),
-            "trend": trend_desc,
-            "signal": signal
+    else:
+        signal = "WAIT ⚪"
+        trend_desc = "انتظار (السوق في منطقة محايدة)"
+
+    return {
+        "rsi": round(rsi, 2),
+        "price": round(last_close, 5),
+        "upper_band": round(upper_band, 5),
+        "lower_band": round(lower_band, 5),
+        "trend": trend_desc,
+        "signal": signal
+    }
+    
         }
     except Exception as e:
         logging.error(f"Error analyzing {ticker_symbol}: {e}")
