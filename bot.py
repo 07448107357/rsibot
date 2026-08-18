@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # 🔑 ضعي/ضع التوكن الخاص بك هنا
-TOKEN = "8920172447:AAH0FcDSFn4nDoa7yB5yKpDGrG0kHCynvmE"
+TOKEN = "8920172447:AAELIIm6dvPjS-oFQA0Mk6Lou3EfLHAB7TY"
 
 # ---------------------------------------------------------
 # 1. قائمة الأصول المالية
