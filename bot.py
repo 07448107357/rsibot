@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 # 1. إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 # بدلاً من كتابة التوكن مباشرة، يقرأه البوت من إعدادات Render:
-TOKEN = os.getenv("BOT_TOKEN", "8866300939:AAFzr00uLQXxUadD1JNG5xqpt6sLQve3AfQ")
+TOKEN = "8866300939:AAFzr00uLQXxUadD1JNG5xqpt6sLQve3AfQ"
 # --------------------------------------------------
 # 3. قاموس الأصول الشامل (ASSETS) من الصور
 # --------------------------------------------------
