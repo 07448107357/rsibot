@@ -11,7 +11,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 TOKEN = "8866300939:AAHYmUmEUdDYebIpsvdJ9lEEHJfCO9sdU4Y"
 print(f"DEBUG_TOKEN_CHECK: {TOKEN}")
-
 # --------------------------------------------------
 # 3. قاموس الأصول الشامل (ASSETS) من الصور
 # --------------------------------------------------
