@@ -9,7 +9,7 @@ from telegram.request import HTTPXRequest
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 # 1. إعداد التسجيل (Logging)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-# بدلاً من كتابة التوكن مباشرة، يقرأه البوت من إعدادات Render:
+print(f"DEBUG_TOKEN_CHECK: {TOKEN}")
 TOKEN = "8866300939:AAHYmUmEUdDYebIpsvdJ9lEEHJfCO9sdU4Y"
 # --------------------------------------------------
 # 3. قاموس الأصول الشامل (ASSETS) من الصور
