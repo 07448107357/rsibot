@@ -1,6 +1,8 @@
-python-telegram-bot
-yfinance
+pytelegrambotapi
 pandas
+TA-Lib
+requests
+
 
 
 
