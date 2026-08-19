@@ -191,7 +191,7 @@ async def show_signal_page(query, context):
 
 # --- التشغيل الأساسي للبوت ---
 def main():
-    TOKEN = "8866300939:AAHYmUmEUdDYebIpsvdJ9lEEHJfCO9sdU4Y"ضع_توكن_البوت_هناا
+    TOKEN = "8866300939:AAHYmUmEUddYEbIpsvdJ9lEEHJfC09sdU4Y"
     
     app = ApplicationBuilder().token(TOKEN).build()
     
