@@ -1,5 +1,4 @@
 import pandas as pd
-import pandas_ta as ta
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
