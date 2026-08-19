@@ -1,6 +1,7 @@
-pyTelegramBotAPI
+python-telegram-bot
 pandas
 requests
+
 
 
 
