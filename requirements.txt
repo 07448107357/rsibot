@@ -1,7 +1,9 @@
 pytelegrambotapi
 pandas
-TA-Lib
+pandas-ta
 requests
+
+
 
 
 
