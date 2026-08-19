@@ -246,7 +246,7 @@ def main():
     # الحصول على التوكن من متغيرات البيئة
     TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TOKEN:
-        TOKEN = "8920172447:AAEYfghaaLEUswOunEBHESKOQrscwZX5ejM"
+        TOKEN = "8866300939:AAHYmUmEUdDYebIpsvdJ9lEEHJfCO9sdU4Y"
 
     # رفع وقت المهلة وإضافة إعادة المحاولة التلقائية
     request = HTTPXRequest(
