@@ -192,7 +192,7 @@ async def show_signal_page(query, context):
 # --- التشغيل الأساسي للبوت ---
 def main():
     import os
-    TOKEN = "8866300939:AAHYmUmEUdDYebIpsvdJ9lEEHJfCO9sdU4Y"
+    TOKEN = "8866300939:AAHYc_MAX_myKVe1gVUBi_sNG3KTDTN0aIg"
     
     
     app = ApplicationBuilder().token(TOKEN).build()
