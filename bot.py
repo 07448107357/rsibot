@@ -201,7 +201,7 @@ def main():
     import os
     TOKEN = "8866300939:AAEc3Ug4a5i70Je7ZTSEG96guAsBvvwJyd4"
     
-    app = ApplicationBuilder().token(TOKEN).drop_pending_updates(True).build()
+    app = ApplicationBuilder().token(TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern='^main_menu$'))
@@ -211,12 +211,15 @@ def main():
     app.add_handler(CallbackQueryHandler(set_pair, pattern='^setpair_'))
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern='^settf_'))
     app.add_handler(CallbackQueryHandler(get_signal, pattern='^get_signal$'))
+    app.run_polling(drop_pending_updates=True)
     
     print("Bot is running perfectly with all features...")
-    app.run_polling()
+
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
+    
             
     
     
