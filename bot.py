@@ -201,7 +201,7 @@ def main():
     import os
     TOKEN = "8866300939:AAEc3Ug4a5i70Je7ZTSEG96guAsBvvwJyd4"
     
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).drop_pending_updates(True).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern='^main_menu$'))
