@@ -74,17 +74,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 # قائمة الفريمات الزمنية منظمة (زرين في كل صف) وتتضمن 2m و 3m
-keyboard = [
-    [InlineKeyboardButton("⏱ 5s", callback_data="tf_5s"), InlineKeyboardButton("⏱ 10s", callback_data="tf_10s")],
-    [InlineKeyboardButton("⏱ 15s", callback_data="tf_15s"), InlineKeyboardButton("⏱ 30s", callback_data="tf_30s")],
-    [InlineKeyboardButton("⏱ 1m", callback_data="tf_1m"), InlineKeyboardButton("⏱ 2m", callback_data="tf_2m")],
-    [InlineKeyboardButton("⏱ 3m", callback_data="tf_3m"), InlineKeyboardButton("⏱ 5m", callback_data="tf_5m")],
-    [InlineKeyboardButton("⏱ 15m", callback_data="tf_15m"), InlineKeyboardButton("⏱ 30m", callback_data="tf_30m")],
-    [InlineKeyboardButton("⏱ 1h", callback_data="tf_1h")],
-    [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-]
-reply_markup = InlineKeyboardMarkup(keyboard)
-    
+    keyboard = [
+        [InlineKeyboardButton("⏱ 5s", callback_data="tf_5s"), InlineKeyboardButton("⏱ 10s", callback_data="tf_10s")],
+        [InlineKeyboardButton("⏱ 15s", callback_data="tf_15s"), InlineKeyboardButton("⏱ 30s", callback_data="tf_30s")],
+        [InlineKeyboardButton("⏱ 1m", callback_data="tf_1m"), InlineKeyboardButton("⏱ 2m", callback_data="tf_2m")],
+        [InlineKeyboardButton("⏱ 3m", callback_data="tf_3m"), InlineKeyboardButton("⏱ 5m", callback_data="tf_5m")],
+        [InlineKeyboardButton("⏱ 15m", callback_data="tf_15m"), InlineKeyboardButton("⏱ 30m", callback_data="tf_30m")],
+        [InlineKeyboardButton("⏱ 1h", callback_data="tf_1h")],
+        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     if update.message:
         await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
     elif update.callback_query:
