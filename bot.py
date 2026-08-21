@@ -214,8 +214,10 @@ def main():
     app.add_handler(CallbackQueryHandler(start, pattern="main_menu"))
     app.run_polling(drop_pending_updates=True)
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    # مسح أي اتصالات معلقة وضمان تشغيل نسخة واحدة فقط
+    app.run_polling(drop_pending_updates=True)
+    
     
             
     
