@@ -20,7 +20,7 @@ import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# ضع تعريف البوت هنا بعد الاستيرادات مباشرة:
+# new token
 app = ApplicationBuilder().token("8866300939:AAHgJoUZAnyMvUw6xbZjVl_vOzF07nqMcMA").build()
 
 
