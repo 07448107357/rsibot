@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from threading import Thread
-
+app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
 app_web = Flask('')
 
 @app_web.route('/')
@@ -211,8 +211,6 @@ async def show_signal_page(query, context):
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
     
-    # في نهاية الملف، ضع هذا الكود تماماً:
-    app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
