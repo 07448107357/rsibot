@@ -225,7 +225,7 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
     
     # تعديل هذا السطر ليقبل أي زر يبدأ بـ tf_ أو يطابق الفريمات مثل 5s, 10s, الخ
-    app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^(tf_|5s|10s|15s|30s|1m|2m|3m|5m|15m|30m|1h)"))
+    app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
     
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
     
