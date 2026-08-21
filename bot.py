@@ -213,9 +213,6 @@ def main():
     app.add_handler(CallbackQueryHandler(get_signal, pattern='^get_signal$'))
     app.add_handler(CallbackQueryHandler(start, pattern="main_menu"))
     app.run_polling(drop_pending_updates=True)
-    
-    
-    print("Bot is running perfectly with all features...")
 
 if __name__ == '__main__':
     main()
