@@ -209,7 +209,7 @@ async def show_signal_page(query, context):
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
 
- if __name__ == "__main__":
+if __name__ == "__main__":
     application.run_polling(drop_pending_updates=True)
      
     
