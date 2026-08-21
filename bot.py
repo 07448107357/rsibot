@@ -87,8 +87,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"مرحباً بك يا **{user_name}** في بوت المؤشرات والتحليل الفوري 📊\n\n"
         "قم بتحديد الأصل والفريم الزمني المناسب لصفقتك من الأزرار أدناه:"
     )
-    
-    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 # قائمة الفريمات الزمنية منظمة (زرين في كل صف) وتتضمن 2m و 3m
     keyboard = [
