@@ -198,7 +198,7 @@ async def show_signal_page(query, context):
 
 if __name__ == "__main__":
     from telegram.ext import ApplicationBuilder
-    ApplicationBuilder().token("8866300939:AAEzh8WC0z9m3wNVMAiL36FzNezAFsaO_Ek")
+    app = ApplicationBuilder().token("8866300939:AAEzh8WC0z9m3wNVMAiL36FzNezAFsaO_Ek").build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
