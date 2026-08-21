@@ -232,7 +232,11 @@ if __name__ == "__main__":
     app.run_polling(drop_pending_updates=True)
     
 if __name__ == '__main__':
-    app.run_polling()
+    keep_alive()
+    # هذا السطر يقوم بإلغاء أي اتصال قديم عالق قبل تشغيل البوت جديداً
+    # وتجنب خطأ الـ Conflict تماماً
+    application.run_polling(drop_pending_updates=True)
+    
     
     
     
