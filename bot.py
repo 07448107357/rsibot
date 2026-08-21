@@ -215,7 +215,11 @@ def main():
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    application.run_polling(drop_pending_updates=True)
+    from telegram.ext import ApplicationBuilder
+    # تأكد من وضع التوكن الخاص بك هنا أو استخدام المتغير المعرف مسبقاً
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.run_polling(drop_pending_updates=True)
+    
     
     
     
