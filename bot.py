@@ -196,10 +196,10 @@ async def show_signal_page(query, context):
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
 
-    TOKEN = "8866300939:AAFDciFpyJMwE1zpk9YG5LKECY_SzT2byQQ"
-
-    app = ApplicationBuilder().token(TOKEN).build()
-
+    if __name__ == "__main__":
+    from telegram.ext import ApplicationBuilder
+    app = ApplicationBuilder().token("8866300939:AAFDciFPyJmWE1zpk9YG5LKECY_SzT2byQQ").build()
+    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
     app.add_handler(CallbackQueryHandler(menu_cat, pattern="^menu_cat$"))
@@ -208,9 +208,9 @@ async def show_signal_page(query, context):
     app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
-
-if __name__ == "__main__":
-    application.run_polling(drop_pending_updates=True)
+    
+    app.run_polling(drop_pending_updates=True)
+    
      
     
     
