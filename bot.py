@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from threading import Thread
-app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
+
 app_web = Flask('')
 
 @app_web.route('/')
@@ -14,11 +14,15 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
-    
+
 import pandas as pd
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+
+# ضع تعريف البوت هنا بعد الاستيرادات مباشرة:
+app = ApplicationBuilder().token("8866300939:AAHgD6OPTD0yidWNHuaUascwmFRya8i3t7c").build()
+
 
 # --- جميع الأصول والأزواج مرتبة بالرموز والأعلام والملونة ---
 CATEGORIES = {
