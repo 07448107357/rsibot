@@ -196,7 +196,7 @@ async def show_signal_page(query, context):
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
 
-    if __name__ == "__main__":
+if __name__ == "__main__":
     from telegram.ext import ApplicationBuilder
     app = ApplicationBuilder().token("8866300939:AAFDciFPyJmWE1zpk9YG5LKECY_SzT2byQQ").build()
     
