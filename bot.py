@@ -217,8 +217,6 @@ def main():
     
     print("Bot is running perfectly with all features...")
 
-    app.run_polling(drop_pending_updates=True)
-
 if __name__ == '__main__':
     main()
     
