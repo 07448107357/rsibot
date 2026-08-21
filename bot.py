@@ -430,7 +430,7 @@ if __name__ == "__main__":
     
     app.run_polling(drop_pending_updates=True)
     
-    if __name__ == "__main__":
+if __name__ == "__main__":
     app.updater.start_polling(drop_pending_updates=True)
     app.start()
     app.run_polling(drop_pending_updates=True)
