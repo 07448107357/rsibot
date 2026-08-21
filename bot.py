@@ -210,10 +210,10 @@ async def show_signal_page(query, context):
     )
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
-
-
-    app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
     
+    # في نهاية الملف، ضع هذا الكود تماماً:
+    app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
     app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
@@ -222,9 +222,7 @@ async def show_signal_page(query, context):
     app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
-    
-    
-    
+
 if __name__ == "__main__":
     try:
         keep_alive()
