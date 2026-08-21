@@ -283,7 +283,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_name = update.effective_user.first_name if update.effective_user else "متداول"
     welcome_message = (
-        f"مرحباً بك يا **{user_name}** في بوت المؤشرات والتحليل الفوري 📊\n\n"
+        f"مرحباً بك يا {user_name} في بوت المؤشرات والتحليل الفوري 📊\n\n"
         "قم بتحديد الأصل والفريم الزمني المناسب لصفقتك من الأزرار أدناه:"
     )
     
