@@ -18,7 +18,7 @@ def keep_alive():
 import pandas as pd
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # ضع تعريف البوت هنا بعد الاستيرادات مباشرة:
 app = ApplicationBuilder().token("8866300939:AAHgD6OPTD0yidWNHuaUascwmFRya8i3t7c").build()
