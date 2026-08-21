@@ -196,18 +196,18 @@ async def show_signal_page(query, context):
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
 
-        TOKEN = "8866300939:AAFDciFpyJMwE1zpk9YG5LKECY_SzT2byQQ"
+    TOKEN = "8866300939:AAFDciFpyJMwE1zpk9YG5LKECY_SzT2byQQ"
 
-        app = ApplicationBuilder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
 
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
-        app.add_handler(CallbackQueryHandler(menu_cat, pattern="^menu_cat$"))
-        app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
-        app.add_handler(CallbackQueryHandler(show_pairs, pattern="^show_pairs$"))
-        app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
-        app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
-        app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
+    app.add_handler(CallbackQueryHandler(menu_cat, pattern="^menu_cat$"))
+    app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
+    app.add_handler(CallbackQueryHandler(show_pairs, pattern="^show_pairs$"))
+    app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
+    app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
+    app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
 
 if __name__ == "__main__":
     app.run_polling(drop_pending_updates=True)
