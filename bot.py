@@ -221,12 +221,9 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
     app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
-    app.add_handler(CallbackQueryHandler(show_pairs, pattern="^show_pairs$"))
+    app.add_handler(CallbackQueryHandler(show_pairs, pattern="^(show_pairs|cat_.*)$"))
     app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
-    
-    # تعديل هذا السطر ليقبل أي زر يبدأ بـ tf_ أو يطابق الفريمات مثل 5s, 10s, الخ
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
-    
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
     
     app.run_polling(drop_pending_updates=True)
