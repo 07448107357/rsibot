@@ -21,7 +21,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # ضع تعريف البوت هنا بعد الاستيرادات مباشرة:
-app = ApplicationBuilder().token("8866300939:AAHgD6OPTD0yidWNHuaUascwmFRya8i3t7c").build()
+app = ApplicationBuilder().token("8866300939:AAHgJoUZAnyMvUw6xbZjVl_vOzF07nqMcMA").build()
 
 
 # --- جميع الأصول والأزواج مرتبة بالرموز والأعلام والملونة ---
