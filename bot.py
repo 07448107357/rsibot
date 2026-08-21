@@ -213,8 +213,7 @@ async def show_signal_page(query, context):
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
 
-if __name__ == "__main__":
-    from telegram.ext import ApplicationBuilder
+
     app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
     
     app.add_handler(CommandHandler("start", start))
@@ -226,13 +225,15 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
     
+    
+    
+if __name__ == "__main__":
+    try:
+        keep_alive()
+    except Exception:
+        pass
     app.run_polling(drop_pending_updates=True)
     
-if __name__ == '__main__':
-    keep_alive()
-    # هذا السطر يقوم بإلغاء أي اتصال قديم عالق قبل تشغيل البوت جديداً
-    # وتجنب خطأ الـ Conflict تماماً
-    application.run_polling(drop_pending_updates=True)
     
     
     
