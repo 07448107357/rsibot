@@ -198,7 +198,7 @@ async def show_signal_page(query, context):
 
 if __name__ == "__main__":
     from telegram.ext import ApplicationBuilder
-    app = ApplicationBuilder().token("8866300939:AAEzh8WC0z9m3wNVMAiL36FzNezAFsaO_Ek").build()
+    app = ApplicationBuilder().token("أدخل_التوكن_هنا").build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
@@ -206,7 +206,10 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
     app.add_handler(CallbackQueryHandler(show_pairs, pattern="^show_pairs$"))
     app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
-    app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
+    
+    # تعديل هذا السطر ليقبل أي زر يبدأ بـ tf_ أو يطابق الفريمات مثل 5s, 10s, الخ
+    app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^(tf_|5s|10s|15s|30s|1m|2m|3m|5m|15m|30m|1h)"))
+    
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
     
     app.run_polling(drop_pending_updates=True)
