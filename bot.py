@@ -218,7 +218,7 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token("8866300939:AAHKOgxn12G0kEVDGv1m9x6q-SsaolFC3V8").build()
     
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(start, pattern="^start$"))
+    app.add_handler(CallbackQueryHandler(start, pattern="^(start|main_menu)$"))
     app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
     app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
     app.add_handler(CallbackQueryHandler(show_pairs, pattern="^show_pairs$"))
