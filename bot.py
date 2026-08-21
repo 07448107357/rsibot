@@ -212,6 +212,7 @@ def main():
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern='^settf_'))
     app.add_handler(CallbackQueryHandler(get_signal, pattern='^get_signal$'))
     app.run_polling(drop_pending_updates=True)
+    app.add_handler(CallbackQueryHandler(start, pattern="main_menu"))
     
     print("Bot is running perfectly with all features...")
 
