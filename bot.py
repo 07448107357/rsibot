@@ -215,8 +215,8 @@ def main():
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    # مسح أي اتصالات معلقة وضمان تشغيل نسخة واحدة فقط
-    app.run_polling(drop_pending_updates=True)
+    application.run_polling(drop_pending_updates=True)
+    
     
     
             
