@@ -214,9 +214,12 @@ async def show_signal_page(query, context):
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
     
 
-    def main():
-    # استخدام متغير البيئة بأمان (تأكد أنك وضعته في Render)
-        TOKEN = os.getenv("TELEGRAM_TOKEN")
+def main():
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
+    if not TOKEN:
+        print("Error: TELEGRAM_TOKEN environment variable not found!")
+        return
+        
     
     # بناء التطبيق مع التوكن الصحيح
         app = ApplicationBuilder().token(TOKEN).build()
