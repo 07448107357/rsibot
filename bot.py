@@ -238,8 +238,11 @@ def main():
         app.run_polling(drop_pending_updates=True)
 
     if __name__ == "__main__":
-        main()
-    
+        try:
+            main()
+        except Exception as e:
+            print(f"CRASH ERROR: {e}")
+        
     
     
     
