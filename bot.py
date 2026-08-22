@@ -2,18 +2,25 @@ import os
 from flask import Flask
 from threading import Thread
 
-app_web = Flask('')
+app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
     return "Bot is running!"
 
 def run():
-    app_web.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    # استخدام البورت الصحيح الذي توفره منصة Render تلقائياً
+    port = int(os.environ.get("PORT", 10000))
+    app_web.run(host='0.0.0.0', port=port)
 
 def keep_alive():
     t = Thread(target=run)
+    t.daemon = True
     t.start()
+
+# استدعاء دالة الحفاظ على التشغيل في البداية
+keep_alive()
+
 
 import pandas as pd
 import random
