@@ -235,7 +235,7 @@ async def show_signal_page(query, context):
         app.run_polling(drop_pending_updates=True)
 
     if __name__ == "__main__":
-    main()
+        main()
     
     
     
