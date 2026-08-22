@@ -215,28 +215,28 @@ async def show_signal_page(query, context):
     
 
     def main():
-    # ضع التوكن هنا أو اسحبه من متغيرات البيئة
-    TOKEN = os.getenv("TELEGRAM_TOKEN")
+    # استخدام متغير البيئة بأمان (تأكد أنك وضعته في Render)
+        TOKEN = os.getenv("8686410705:AAHWesoGef8pF6YeCgaz8rMznOzOKr0gZv0")
     
-    # بناء التطبيق
-    app = ApplicationBuilder().token(8686410705:AAHWesoGef8pF6YeCgaz8rMznOzOKr0gZv0).build()
+    # بناء التطبيق مع التوكن الصحيح
+        app = ApplicationBuilder().token(TOKEN).build()
 
-    # إضافة المعالجات (Handlers) هنا مرة واحدة فقط داخل دالة البداية
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
-    app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
-    app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
-    app.add_handler(CallbackQueryHandler(show_pairs, pattern="^(show_pairs|cat_.*)$"))
-    app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
-    app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
-    app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
+    # إضافة المعالجات (Handlers)
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
+        app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
+        app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
+        app.add_handler(CallbackQueryHandler(show_pairs, pattern="^(show_pairs|cat_.*)$"))
+        app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
+        app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
+        app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
 
-    # تشغيل البوت بسلاسة
-    print("Bot is starting...")
-    app.run_polling(drop_pending_updates=True)
+        print("Bot is starting...")
+        app.run_polling(drop_pending_updates=True)
 
-if __name__ == "__main__":
+    if __name__ == "__main__":
     main()
+    
     
     
     
