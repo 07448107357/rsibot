@@ -21,9 +21,6 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
 
-app = ApplicationBuilder().token("8686410705:AAG2PbprDQCw3sHpFYMQI8jDP1bj78VDvk4").build()
-
-
 
 # --- جميع الأصول والأزواج مرتبة بالرموز والأعلام والملونة ---
 CATEGORIES = {
@@ -217,6 +214,14 @@ async def show_signal_page(query, context):
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
     
 
+    def main():
+    # ضع التوكن هنا أو اسحبه من متغيرات البيئة
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
+    
+    # بناء التطبيق
+    app = ApplicationBuilder().token(8686410705:AAHWesoGef8pF6YeCgaz8rMznOzOKr0gZv0).build()
+
+    # إضافة المعالجات (Handlers) هنا مرة واحدة فقط داخل دالة البداية
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
     app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
@@ -226,8 +231,12 @@ async def show_signal_page(query, context):
     app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
 
-if __name__ == "__main__":
+    # تشغيل البوت بسلاسة
+    print("Bot is starting...")
     app.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    main()
     
     
     
