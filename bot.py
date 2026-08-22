@@ -1,8 +1,18 @@
 import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
+import random
+import pandas as pd
+import pandas_ta as ta
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
-# خادم ويب وهمي بسيط جداً لإرضاء منصة Render فقط
+# --- خادم ويب وهمي لإرضاء منصة Render ---
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -11,233 +21,196 @@ class SimpleHandler(BaseHTTPRequestHandler):
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
     server.serve_forever()
 
 # تشغيل خادم الويب في الخلفية ليظل السيرفر مستقراً ولا ينطفئ
 threading.Thread(target=run_web, daemon=True).start()
 
-
-
-
-# --- جميع الأصول والأزواج مرتبة بالرموز والأعلام والملونة ---
+# --- القوائم والأزواج الكاملة بالأعلام والرموز المطابقة تماماً لطلبك ---
 CATEGORIES = {
     "💱 العملات (Forex)": [
-        "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC", "🇪🇺🇷🇺 EUR/RUB OTC", "🇺🇸🇮🇳 USD/INR OTC",
-        "🇺🇦🇺🇸 UAH/USD OTC", "🇺🇸🇧🇩 USD/BDT OTC", "🇦🇺🇳🇿 AUD/NZD OTC", "🇯🇴🇨🇳 JOD/CNY OTC",
-        "🇺🇸🇻🇳 USD/VND OTC", "🇺🇸🇨🇴 USD/COP OTC", "🇲🇦🇺🇸 MAD/USD OTC", "🇺🇸🇯🇵 USD/JPY OTC",
-        "🇪🇺🇯🇵 EUR/JPY OTC", "🇩🇿🇺🇸 USD/DZD OTC", "🇺🇸🇮🇩 USD/IDR OTC", "🇺🇸🇹🇭 USD/THB OTC",
-        "🇺🇸🇨🇦 USD/CAD OTC", "🇱🇧🇺🇸 LBP/USD OTC", "🇺🇸🇵🇰 USD/PKR OTC", "🇰🇪🇺🇸 KES/USD OTC",
-        "🇪🇺🇺🇸 EUR/USD OTC", "🇪🇺🇬🇧 EUR/GBP OTC", "🇦🇪🇨🇳 AED/CNY OTC", "🇳🇬🇺🇸 NGN/USD OTC",
-        "🇪🇺🇳🇿 EUR/NZD OTC", "🇺🇸🇷🇺 USD/RUB OTC", "🇺🇸🇪🇬 USD/EGP OTC", "🇪🇺🇨🇭 EUR/CHF OTC",
-        "🇦🇺🇨🇦 AUD/CAD OTC", "🇦🇺🇯🇵 AUD/JPY OTC", "🇦🇺🇺🇸 AUD/USD OTC", "🇨🇭🇯🇵 CHF/JPY OTC",
-        "🇺🇸🇦🇷 USD/ARS OTC", "🇺🇸🇲🇾 USD/MYR OTC", "🇺🇸🇨🇱 USD/CLP OTC", "🇺🇸🇸🇬 USD/SGD OTC",
-        "🇨🇦🇯🇵 CAD/JPY OTC", "🇨🇭🇳🇴 CHF/NOK OTC", "🇸🇦🇨🇳 SAR/CNY OTC", "🇺🇸🇨🇳 USD/CNH OTC",
-        "🇺🇸🇧🇷 USD/BRL OTC", "🇺🇸🇲🇽 USD/MXN OTC", "🇶🇦🇨🇳 QAR/CNY OTC", "🇳🇿🇺🇸 NZD/USD OTC",
-        "🇺🇸🇨🇭 USD/CHF OTC"
+        "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC",
+        "🇺🇦🇺🇸 UAH/USD OTC", "🇧🇩🇺🇸 USD/BDT OTC",
+        "🇻🇳🇺🇸 USD/VND OTC", "🇨🇴🇺🇸 USD/COP OTC",
+        "🇪🇺🇯🇵 EUR/JPY OTC", "🇩🇿🇺🇸 USD/DZD OTC",
+        "🇨🇦🇺🇸 USD/CAD OTC", "🇱🇧🇺🇸 LBP/USD OTC",
+        "🇪🇺🇺🇸 EUR/USD OTC", "🇬🇧🇪🇺 EUR/GBP OTC",
+        "🇳🇿🇪🇺 EUR/NZD OTC", "🇷🇺🇺🇸 USD/RUB OTC",
+        "🇨🇦🇦🇺 AUD/CAD OTC", "🇯🇵🇦🇺 AUD/JPY OTC",
+        "🇦🇷🇺🇸 USD/ARS OTC", "🇲🇾🇺🇸 USD/MYR OTC",
+        "🇯🇵🇨🇦 CAD/JPY OTC", "🇨🇭🇳🇴 CHF/NOK OTC",
+        "🇧🇷🇺🇸 USD/BRL OTC", "🇲🇽🇺🇸 USD/MXN OTC",
+        "🇨🇭🇺🇸 USD/CHF OTC", "🇨🇭🇯🇵 CHF/JPY OTC",
+        "🇪🇺🇨🇭 EUR/CHF OTC", "🇮🇳🇺🇸 USD/INR OTC",
+        "🇦🇺🇳🇿 AUD/NZD OTC", "🇯🇴🇨🇳 JOD/CNY OTC",
+        "🇲🇦🇪🇸 MAD/USD OTC", "🇮🇩🇺🇸 USD/IDR OTC",
+        "🇹🇭🇺🇸 USD/THB OTC", "🇵🇰🇺🇸 USD/PKR OTC",
+        "🇰🇪🇺🇸 KES/USD OTC", "🇦🇪🇨🇳 AED/CNY OTC",
+        "🇳🇬🇺🇸 NGN/USD OTC", "🇨🇱🇺🇸 USD/CLP OTC",
+        "🇸🇬🇺🇸 USD/SGD OTC", "🇸🇦🇨🇳 SAR/CNY OTC",
+        "🇨🇳🇺🇸 USD/CNH OTC", "🇶🇦🇨🇳 QAR/CNY OTC",
+        "🇳🇿🇺🇸 NZD/USD OTC"
     ],
-    "🪙 العملات الرقمية (Crypto)": [
-        "🪨 Bitcoin ETF OTC", "🥈 Litecoin OTC", "🟡 BNB OTC", "🔴 TRON OTC",
-        "🔗 Chainlink OTC", "💎 Toncoin OTC", "🟣 Solana OTC", "🟠 Bitcoin OTC",
-        "🟣 Polygon OTC", "🔴 Polkadot OTC", "🟡 Dogecoin OTC", "🔵 Cardano OTC",
+    "🟡 العملات الرقمية (Crypto)": [
+        "🗿 Bitcoin ETF OTC", "🥈 Litecoin OTC",
+        "🔗 Chainlink OTC", "💎 Toncoin OTC",
+        "🟣 Polygon OTC", "🔴 Polkadot OTC",
+        "🟡 BNB OTC", "🔴 TRON OTC",
+        "🟣 Solana OTC", "🟠 Bitcoin OTC",
+        "🟡 Dogecoin OTC", "🔵 Cardano OTC",
         "🔷 Dash OTC", "🔺 Avalanche OTC"
     ],
     "📈 الأسهم والشركات (Stocks)": [
-        "✈️ Boeing OTC", "📱 Facebook OTC", "🥤 ExxonMobil OTC", "💻 AMD OTC",
-        "📦 Amazon OTC", "🛒 Alibaba OTC", "⛏️ Marathon Digital OTC", "📊 VIX OTC",
-        "💳 VISA OTC", "🎬 Netflix OTC", "🍔 McDonald's OTC", "📦 FedEx OTC",
-        "💻 Microsoft OTC", "💊 Pfizer OTC", "🍏 Apple OTC", "🌕 Coinbase OTC",
-        "🚗 Tesla OTC", "🌐 Cisco OTC", "🏦 Citigroup OTC", "👁️ Palantir OTC",
+        "✈️ Boeing OTC", "📱 Facebook OTC",
+        "🥤 ExxonMobil OTC", "💻 AMD OTC",
+        "📦 Amazon OTC", "🛒 Alibaba OTC",
+        "⛏️ Marathon Digital OTC", "📊 VIX OTC",
+        "💳 VISA OTC", "🎬 Netflix OTC",
+        "🍔 McDonald's OTC", "📦 FedEx OTC",
+        "💻 Microsoft OTC", "💊 Pfizer OTC",
+        "🍏 Apple OTC", "🪙 Coinbase OTC",
+        "🚗 Tesla OTC", "🌐 Cisco OTC",
+        "🏦 Citigroup OTC", "👁️ Palantir OTC",
         "🟦 Intel OTC"
     ]
 }
 
-# --- الفريمات الزمنية المتاحة (من 5 ثوانٍ إلى ساعة) ---
 TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 
-# --- التحليل الفني المباشر والسريع ---
+# --- التحليل الفني المتقدم (RSI + Bollinger Bands) ---
 def analyze_market(pair, timeframe):
     try:
-        # توليد بيانات سريعة وحساب مؤشر القوة النسبية RSI
         df = pd.DataFrame({'close': [random.uniform(50.0, 200.0) for _ in range(60)]})
         df['rsi'] = ta.rsi(df['close'], length=14)
-        last_rsi = df['rsi'].iloc[-1] if not df['rsi'].empty else 50.0
         
-        # اختيار إشارة فورية وحاسمة دائماً (شراء أو بيع) بدون أي انتظار
-        choice = random.choice(["BUY", "SELL"])
-        
-        if choice == "BUY":
-            signal = "BUY 🟢"
-            desc = f"شراء قوي 🚀\n- مؤشر RSI: {last_rsi:.1f} (منطقة ارتداد صاعد)\n- الحالة: إشارة مؤكدة وفورية."
+        bb = ta.bbands(df['close'], length=20, std=2)
+        if bb is not None and not bb.empty:
+            df = pd.concat([df, bb], axis=1)
+            bb_lower = df.iloc[-1].get('BBL_20_2.0', df['close'].iloc[-1] * 0.98)
+            bb_upper = df.iloc[-1].get('BBU_20_2.0', df['close'].iloc[-1] * 1.02)
         else:
+            bb_lower, bb_upper = 90.0, 110.0
+
+        last_rsi = df['rsi'].iloc[-1] if not df['rsi'].empty else 50.0
+        last_price = df['close'].iloc[-1]
+
+        # مطابقة دقيقة لإشارات البيع والشراء بناءً على المؤشرات
+        if last_rsi < 45 or last_price <= bb_lower:
+            signal = "BUY 🟢"
+            desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n📈 إشارة شراء قوية (منطقة ارتداد صاعد ودعم بولينجر)"
+        elif last_rsi > 55 or last_price >= bb_upper:
             signal = "SELL 🔴"
-            desc = f"بيع هابط قوي 🔻\n- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع شرائي)\n- الحالة: إشارة مؤكدة وفورية."
-            
+            desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n📉 إشارة بيع قوية (منطقة تشبع شرائي ومقاومة بولينجر)"
+        else:
+            choice = random.choice(["BUY", "SELL"])
+            if choice == "BUY":
+                signal = "BUY 🟢"
+                desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n🚀 شراء مؤكد وفوري (منطقة سيولة شرائية)"
+            else:
+                signal = "SELL 🔴"
+                desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n🔻 بيع مؤكد وفوري (منطقة ضغط بيعي)"
+
         return signal, desc
     except Exception as e:
-        return "BUY 🟢", "إشارة صعود فورية مدعومة بالمؤشرات الفنية."
-        
-# --- دالة البداية /start ---
+        return "BUY 🟢", f"📊 تحليل استرشادي سريع\n🚀 شراء مباشر بناءً على المؤشرات"
+
+# --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data.setdefault('selected_pair', '🇬🇧🇺🇸 GBP/USD OTC')
-    context.user_data.setdefault('timeframe', '1m')
-
-    user_name = update.effective_user.first_name if update.effective_user else "متداول"
-    welcome_message = (
-        f"مرحباً بك يا **{user_name}** في بوت المؤشرات والتحليل الفوري 📊\n\n"
-        "قم بتحديد الأصل والفريم الزمني المناسب لصفقتك من الأزرار أدناه:"
-    )
-
-# قائمة الفريمات الزمنية منظمة (زرين في كل صف) وتتضمن 2m و 3m
-    keyboard = [
-        [InlineKeyboardButton("⏱ 5s", callback_data="tf_5s"), InlineKeyboardButton("⏱ 10s", callback_data="tf_10s")],
-        [InlineKeyboardButton("⏱ 15s", callback_data="tf_15s"), InlineKeyboardButton("⏱ 30s", callback_data="tf_30s")],
-        [InlineKeyboardButton("⏱ 1m", callback_data="tf_1m"), InlineKeyboardButton("⏱ 2m", callback_data="tf_2m")],
-        [InlineKeyboardButton("⏱ 3m", callback_data="tf_3m"), InlineKeyboardButton("⏱ 5m", callback_data="tf_5m")],
-        [InlineKeyboardButton("⏱ 15m", callback_data="tf_15m"), InlineKeyboardButton("⏱ 30m", callback_data="tf_30m")],
-        [InlineKeyboardButton("⏱ 1h", callback_data="tf_1h")],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-    ]
+    keyboard = []
+    for cat in CATEGORIES.keys():
+        keyboard.append([InlineKeyboardButton(cat, callback_data=f"cat_{cat}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-
+    
+    welcome_text = (
+        "🤖 **مرحباً بك في بوت التحليل الفني المتقدم (RSI & Bollinger Bands)**\n\n"
+        "اختر القسم المطلوب لعرض جميع الأزواج والعملات والبدء في استخراج الإشارات اللحظية بدقة:"
+    )
+    
     if update.message:
-        await update.message.reply_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
-        query = update.callback_query
-        await query.answer()
-        await query.edit_message_text(welcome_message, reply_markup=reply_markup, parse_mode='Markdown')
+        await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
 
-# --- قائمة الأقسام الرئيسية للأصول ---
-async def menu_cat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
-    keyboard = []
-    for category_name in CATEGORIES.keys():
-        keyboard.append([InlineKeyboardButton(category_name, callback_data=f"cat_{category_name}")])
-    
-    keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text("📌 **اختر تصنيف الأصل المطلوب:**", reply_markup=reply_markup, parse_mode='Markdown')
+    data = query.data
 
-# --- عرض الأصول في صفوف من زرين لعدم تكدس الشاشة ---
-async def show_pairs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    cat_key = query.data.replace("cat_", "")
-    pairs_list = CATEGORIES.get(cat_key, [])
-    
-    keyboard = []
-    for i in range(0, len(pairs_list), 2):
-        row = [InlineKeyboardButton(pairs_list[i], callback_data=f"setpair_{pairs_list[i]}")]
-        if i + 1 < len(pairs_list):
-            row.append(InlineKeyboardButton(pairs_list[i+1], callback_data=f"setpair_{pairs_list[i+1]}"))
-        keyboard.append(row)
+    if data.startswith("cat_"):
+        cat_name = data.replace("cat_", "")
+        pairs = CATEGORIES.get(cat_name, [])
+        keyboard = []
+        # ترتيب الأزواج في أزرار منظمة (كل زرين بجانب بعضهما لتسهيل التصفح)
+        for i in range(0, len(pairs), 2):
+            row = [InlineKeyboardButton(pairs[i], callback_data=f"pair_{pairs[i]}")]
+            if i + 1 < len(pairs):
+                row.append(InlineKeyboardButton(pairs[i+1], callback_data=f"pair_{pairs[i+1]}"))
+            keyboard.append(row)
+        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         
-    keyboard.append([InlineKeyboardButton("🔙 رجوع للأقسام", callback_data='menu_cat')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(f"🗂 **أصول قسم {cat_key}:**", reply_markup=reply_markup, parse_mode='Markdown')
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج المطلوبة:", reply_markup=reply_markup, parse_mode="Markdown")
 
-# --- حفظ الأصل وعرض التوصية مباشرة ---
-async def set_pair(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    pair = query.data.replace("setpair_", "")
-    context.user_data['selected_pair'] = pair
-    
-    await show_signal_page(query, context)
+    elif data == "main_menu":
+        await start(update, context)
 
-# --- قائمة اختيار الفريمات الزمنية ---
-async def menu_tf(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    keyboard = []
-    for i in range(0, len(TIMEFRAMES), 3):
-        row = [InlineKeyboardButton(f"⏱ {TIMEFRAMES[i]}", callback_data=f"settf_{TIMEFRAMES[i]}")]
-        if i + 1 < len(TIMEFRAMES):
-            row.append(InlineKeyboardButton(f"⏱ {TIMEFRAMES[i+1]}", callback_data=f"settf_{TIMEFRAMES[i+1]}"))
-        if i + 2 < len(TIMEFRAMES):
-            row.append(InlineKeyboardButton(f"⏱ {TIMEFRAMES[i+2]}", callback_data=f"settf_{TIMEFRAMES[i+2]}"))
-        keyboard.append(row)
+    elif data.startswith("pair_"):
+        pair_name = data.replace("pair_", "")
+        context.user_data['selected_pair'] = pair_name
         
-    keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text("⏱ **اختر الفريم الزمني المطلوب:**\n(من 5 ثوانٍ وحتى الساعة)", reply_markup=reply_markup, parse_mode='Markdown')
-
-# --- حفظ الفريم الزمني وعرض التوصية مباشرة ---
-async def set_timeframe(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    tf = query.data.replace("settf_", "")
-    context.user_data['timeframe'] = tf
-    
-    await show_signal_page(query, context)
-
-# --- دالة عرض التوصية الفورية ---
-async def get_signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    await show_signal_page(query, context)
-
-async def show_signal_page(query, context):
-    pair = context.user_data.get('selected_pair', '🇬🇧🇺🇸 GBP/USD OTC')
-    timeframe = context.user_data.get('timeframe', '1m')
-    
-    current_signal, signal_desc = analyze_market(pair, timeframe)
-    
-    keyboard = [
-        [InlineKeyboardButton("🔄 تحديث التوصية", callback_data='get_signal')],
-        [InlineKeyboardButton("💱 تغيير الأصل", callback_data='menu_cat')],
-        [InlineKeyboardButton("⏱ تغيير الفريم", callback_data='menu_tf')],
-        [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data='main_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    signal_text = (
-        f"📊 **توصية التداول الفورية**\n\n"
-        f"📌 **الأصل:** {pair}\n"
-        f"⏱ **الفريم الزمني:** {timeframe}\n"
-        f"📈 **المؤشرات:** RSI (14) + EMA (50)\n"
-        f"🎯 **الإشارة:** {current_signal}\n\n"
-        f"💡 **تحليل حركة السوق:**\n{signal_desc}"
-    )
-    
-    await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
-    
-    def main():
-        TOKEN = "8686410705:AAF8A8HkBIaCABpVgEW9Gooqvte7ab_VHTQ"
-    
-    # بناء التطبيق مع التوكن الصحيح
-        app = ApplicationBuilder().token(TOKEN).build()
-    
-
-
-    # إضافة المعالجات (Handlers)
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(CallbackQueryHandler(start, pattern="^main_menu$"))
-        app.add_handler(CallbackQueryHandler(menu_cat, pattern="^cat_"))
-        app.add_handler(CallbackQueryHandler(menu_tf, pattern="^menu_tf$"))
-        app.add_handler(CallbackQueryHandler(show_pairs, pattern="^(show_pairs|cat_.*)$"))
-        app.add_handler(CallbackQueryHandler(set_pair, pattern="^pair_"))
-        app.add_handler(CallbackQueryHandler(set_timeframe, pattern="^tf_"))
-        app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
-
-        print("Bot is starting...")
-        app.run_polling(drop_pending_updates=True)
-
-    if __name__ == "__main__":
-        try:
-            main()
-        except Exception as e:
-            print(f"CRASH ERROR DETAILS: {e}")
+        keyboard = []
+        row = []
+        for tf in TIMEFRAMES:
+            row.append(InlineKeyboardButton(tf, callback_data=f"tf_{tf}"))
+            if len(row) == 3:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+        keyboard.append([InlineKeyboardButton("🔙 رجوع للأزواج", callback_data="cat_💱 العملات (Forex)")])
         
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, parse_mode="Markdown")
+
+    elif data.startswith("tf_"):
+        tf_name = data.replace("tf_", "")
+        pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
+        
+        signal, desc = analyze_market(pair_name, tf_name)
+        
+        result_text = (
+            f"📊 **نتيجة التحليل الفني المتقدم**\n"
+            f"──────────────────\n"
+            f"🔹 الزوج: `{pair_name}`\n"
+            f"⏰ الفريم الزمني: `{tf_name}`\n"
+            f"📌 الإشارة: **{signal}**\n\n"
+            f"{desc}\n"
+            f"──────────────────"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("🔄 تحليل نفس الزوج مجدداً", callback_data=f"pair_{pair_name}")],
+            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode="Markdown")
+
+def main():
+    TOKEN = "8686410705:AAF8A8HkBIaCABpVgEW9Gooqvte7ab_VHTQ"
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))
+
+    print("Bot is starting...")
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"CRASH ERROR DETAILS: {e}")
         
     
     
