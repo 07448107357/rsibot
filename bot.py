@@ -241,7 +241,8 @@ def main():
         try:
             main()
         except Exception as e:
-            print(f"CRASH ERROR: {e}")
+            print(f"CRASH ERROR DETAILS: {e}")
+        
         
     
     
