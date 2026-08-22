@@ -21,7 +21,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # new token
-app = ApplicationBuilder().token("8920172447:AAEn1qOSmqpmL6nfmo_VInaIoP_KPRqGZl0").build()
+app = ApplicationBuilder().token("8866300939:AAFHMzOp5pTdKPqCjXcpzOvsOJtlF5PcmrA").build()
 
 
 # --- جميع الأصول والأزواج مرتبة بالرموز والأعلام والملونة ---
