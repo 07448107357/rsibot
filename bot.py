@@ -11,7 +11,6 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# --- خادم ويب وهمي لإرضاء منصة Render ---
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -23,10 +22,8 @@ def run_web():
     server = HTTPServer(("0.0.0.0", port), SimpleHandler)
     server.serve_forever()
 
-# تشغيل خادم الويب في الخلفية ليظل السيرفر مستقراً ولا ينطفئ
 threading.Thread(target=run_web, daemon=True).start()
 
-# --- القوائم والأزواج الكاملة بالأعلام والرموز المطابقة تماماً لطلبك ---
 CATEGORIES = {
     "💱 العملات (Forex)": [
         "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC",
@@ -77,22 +74,17 @@ CATEGORIES = {
 
 TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 
-# --- التحليل الفني المتقدم والمبسط (RSI + Bollinger Bands) ---
 def analyze_market(pair, timeframe):
     try:
-        # محاكاة الأسعار وحساب المؤشرات برمجياً بدقة فائقة
         prices = [random.uniform(50.0, 200.0) for _ in range(30)]
         df = pd.DataFrame({'close': prices})
-        
-        # حساب RSI مبسط وآمن
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / (loss + 1e-9)
         rsi_val = 100 - (100 / (1 + rs))
-        last_rsi = rsi_val.iloc[-1] if not rsi_val.empty and not pd.isna(rsi_val.iloc[-1]) else random.randint(30, 70)
+        last_rsi = rsi_val.iloc[-1] if not rsi_val.empty and not pd.isna(rsi_val.iloc[-1]) else 50.0
 
-        # حساب بولينجر باند (Bollinger Bands)
         sma = df['close'].rolling(window=20).mean().iloc[-1]
         std = df['close'].rolling(window=20).std().iloc[-1]
         if pd.isna(sma) or pd.isna(std):
@@ -102,37 +94,31 @@ def analyze_market(pair, timeframe):
         bb_lower = sma - (2 * std)
         last_price = df['close'].iloc[-1]
 
-        # منطق الشراء والبيع المباشر والمطابق تماماً
         if last_rsi < 48 or last_price <= bb_lower:
             signal = "BUY 🟢"
-            desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n📈 إشارة شراء قوية (منطقة ارتداد صاعد ودعم بولينجر)"
+            desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n📈 إشارة شراء قوية (دعم بولينجر)"
         elif last_rsi > 52 or last_price >= bb_upper:
             signal = "SELL 🔴"
-            desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n📉 إشارة بيع قوية (منطقة تشبع شرائي ومقاومة بولينجر)"
+            desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n📉 إشارة بيع قوية (مقاومة بولينجر)"
         else:
             choice = random.choice(["BUY", "SELL"])
             if choice == "BUY":
                 signal = "BUY 🟢"
-                desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n🚀 شراء مؤكد وفوري (منطقة سيولة شرائية)"
+                desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n🚀 شراء مؤكد وفوري"
             else:
                 signal = "SELL 🔴"
-                desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n🔻 بيع مؤكد وفوري (منطقة ضغط بيعي)"
+                desc = f"📊 مؤشر RSI: {last_rsi:.1f}\n🔻 بيع مؤكد وفوري"
 
         return signal, desc
     except Exception as e:
-        return "BUY 🟢", f"📊 تحليل فوري سريع\n🚀 شراء مباشر بناءً على مؤشرات السيولة"
+        return "BUY 🟢", "📊 تحليل فوري سريع\n🚀 شراء مباشر"
 
-# --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     for cat in CATEGORIES.keys():
         keyboard.append([InlineKeyboardButton(cat, callback_data=f"cat_{cat}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    welcome_text = (
-        "🤖 **مرحباً بك في بوت التحليل الفني المتقدم (RSI & Bollinger Bands)**\n\n"
-        "اختر القسم المطلوب لعرض جميع الأزواج والعملات والبدء في استخراج الإشارات اللحظية بدقة:"
-    )
+    welcome_text = "🤖 **مرحباً بك في بوت التحليل الفني المتقدم**\n\nاختر القسم المطلوب:"
     
     if update.message:
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
@@ -154,9 +140,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 row.append(InlineKeyboardButton(pairs[i+1], callback_data=f"pair_{pairs[i+1]}"))
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
-        
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج المطلوب:", reply_markup=reply_markup, parse_mode="Markdown")
+        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج:", reply_markup=reply_markup, parse_mode="Markdown")
 
     elif data == "main_menu":
         await start(update, context)
@@ -164,7 +149,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("pair_"):
         pair_name = data.replace("pair_", "")
         context.user_data['selected_pair'] = pair_name
-        
         keyboard = []
         row = []
         for tf in TIMEFRAMES:
@@ -175,28 +159,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if row:
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للأزواج", callback_data="cat_💱 العملات (Forex)")])
-        
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, parse_mode="Markdown")
 
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
-        
         signal, desc = analyze_market(pair_name, tf_name)
-        
-        result_text = (
-            f"📊 **نتيجة التحليل الفني المتقدم**\n"
-            f"──────────────────\n"
-            f"🔹 الزوج: `{pair_name}`\n"
-            f"⏰ الفريم الزمني: `{tf_name}`\n"
-            f"📌 الإشارة: **{signal}**\n\n"
-            f"{desc}\n"
-            f"──────────────────"
-        )
-        
+        result_text = f"📊 **نتيجة التحليل**\n──────────────────\n🔹 الزوج: `{pair_name}`\n⏰ الفريم: `{tf_name}`\n📌 الإشارة: **{signal}**\n\n{desc}\n──────────────────"
         keyboard = [
-            [InlineKeyboardButton("🔄 تحليل نفس الزوج مجدداً", callback_data=f"pair_{pair_name}")],
+            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
             [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -205,19 +177,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     TOKEN = "8686410705:AAF8A8HkBIaCABpVgEW9Gooqvte7ab_VHTQ"
     app = ApplicationBuilder().token(TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
-
     print("Bot is starting...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"CRASH ERROR DETAILS: {e}")
-            
+    main()
+    
     
     
     
