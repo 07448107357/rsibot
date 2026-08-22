@@ -216,7 +216,7 @@ async def show_signal_page(query, context):
 
     def main():
     # استخدام متغير البيئة بأمان (تأكد أنك وضعته في Render)
-        TOKEN = os.getenv("8686410705:AAHWesoGef8pF6YeCgaz8rMznOzOKr0gZv0")
+        TOKEN = os.getenv("TELEGRAM_TOKEN")
     
     # بناء التطبيق مع التوكن الصحيح
         app = ApplicationBuilder().token(TOKEN).build()
