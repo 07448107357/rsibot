@@ -211,13 +211,13 @@ async def show_signal_page(query, context):
     
     await query.edit_message_text(signal_text, reply_markup=reply_markup, parse_mode='Markdown')
     
-
-def main():
-    TOKEN = "8686410705:AAF8A8HkBIaCABpVgEW9Gooqvte7ab_VHTQ"
-        
+    def main():
+        TOKEN = "8686410705:AAF8A8HkBIaCABpVgEW9Gooqvte7ab_VHTQ"
     
     # بناء التطبيق مع التوكن الصحيح
         app = ApplicationBuilder().token(TOKEN).build()
+    
+
 
     # إضافة المعالجات (Handlers)
         app.add_handler(CommandHandler("start", start))
