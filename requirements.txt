@@ -2,6 +2,8 @@ python-telegram-bot
 pandas
 requests
 flask
+pandas-ta
+
 
 
 
