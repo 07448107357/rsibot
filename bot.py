@@ -213,10 +213,7 @@ async def show_signal_page(query, context):
     
 
 def main():
-    TOKEN = os.getenv("TELEGRAM_TOKEN")
-    if not TOKEN:
-        print("Error: TELEGRAM_TOKEN environment variable not found!")
-        return
+    TOKEN = "8686410705:AAF8A8HkBIaCABpVgEW9Gooqvte7ab_VHTQ"
         
     
     # بناء التطبيق مع التوكن الصحيح
