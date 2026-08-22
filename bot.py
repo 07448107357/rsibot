@@ -226,14 +226,8 @@ async def show_signal_page(query, context):
     app.add_handler(CallbackQueryHandler(get_signal, pattern="^get_signal$"))
 
 if __name__ == "__main__":
-    try:
-        # تشغيل سيرفر الحفاظ على البوت نشطاً في الخلفية بشكل آمن
-        keep_alive()
-    except Exception:
-        pass
+    app.run_polling(drop_pending_updates=True)
     
-    # تشغيل البوت مع مسح أي اتصالات معلقة قديمة تماماً
-    app.run_polling(drop_pending_updates=True, allowed_updates=[])
     
     
     
