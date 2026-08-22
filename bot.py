@@ -20,8 +20,9 @@ import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# new token
-app = ApplicationBuilder().token "8686410705:AAHJm9l4WJYqXJ0xOTSkM20zZm-omBanuBw".build()
+
+app = ApplicationBuilder().token("8686410705:AAHRz09ujnPhc5buxnQGMEPlkE2zCCoH9lY").build()
+
 
 
 # --- جميع الأصول والأزواج مرتبة بالرموز والأعلام والملونة ---
