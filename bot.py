@@ -210,7 +210,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode="Markdown")
 
 def main():
-    TOKEN = "8686410705:AAHxGZDgDwdK1dmIXu3mG-7voAJozBK0GY0"
+    TOKEN = ""
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
