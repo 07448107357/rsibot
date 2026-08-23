@@ -210,12 +210,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode="Markdown")
 
 def main():
-    TOKEN = "8686410705:AAFoOK_DKvvxpwVXMpxF7fF0BnKXLYbaH8k"
+    TOKEN = ""
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     print("Bot is starting...")
     app.run_polling(drop_pending_updates=True)
+    
 
 if __name__ == "__main__":
     main()
