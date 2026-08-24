@@ -204,21 +204,26 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode="Markdown")
 
-import os
+import asyncio
 
 def main():
-    # سيبحث البوت عن التوكن في إعدادات Render تلقائياً
     TOKEN = os.environ.get("BOT_TOKEN")
-    
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     print("Bot is starting...")
-    app.run_polling(drop_pending_updates=True)
     
+    # تشغيل البوت بطريقة مستقرة تتجاوز مشاكل الـ Event Loop
+    try:
+        app.run_polling(drop_pending_updates=True)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        app.run_polling(drop_pending_updates=True)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+    
 
     
     
