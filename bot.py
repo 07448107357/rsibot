@@ -195,7 +195,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
-        signal, desc = analyze_market(pair_name, tf_name)
+        signal, desc = analyze_market(df, pair_name, tf_name)
         result_text = f"📊 **نتيجة التحليل**\n──────────────────\n🔹 الزوج: `{pair_name}`\n⏰ الفريم: `{tf_name}`\n📌 الإشارة: **{signal}**\n\n{desc}\n──────────────────"
         keyboard = [
             [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
