@@ -80,72 +80,73 @@ CATEGORIES = {
 TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 
 import pandas as pd
-import random
+import numpy as np
 
-# --- التحليل الفني المتقدم والمدمج (RSI + Bollinger Bands + EMA) ---
-def analyze_market(pair, timeframe):
+def analyze_market(df):
     try:
-        # توليد أسعار محاكاة بناءً على اسم الزوج والفريم لضمان استقرار التحليل
-        seed_val = sum(ord(c) for c in pair) + len(timeframe)
-        random.seed(seed_val)
-        
-        prices = [random.uniform(100.0, 150.0) for _ in range(50)]
-        df = pd.DataFrame({'close': prices})
-        
-        # 1. حساب مؤشر القوة النسبية (RSI - 14)
+        # حساب المؤشرات الفنية المطلوبة
+        # 1. مؤشر القوة النسبية (RSI) لفترة 14
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / (loss + 1e-9)
-        rsi_series = 100 - (100 / (1 + rs))
-        last_rsi = rsi_series.iloc[-1]
-        if pd.isna(last_rsi):
-            last_rsi = 50.0
-
-        # 2. حساب المتوسط المتحرك الأسي (EMA - 20)
-        ema_20 = df['close'].ewm(span=20, adjust=False).mean().iloc[-1]
+        rs = gain / loss
+        df['rsi'] = 100 - (100 / (1 + rs))
         
-        # 3. حساب خطوط بولينجر (Bollinger Bands)
-        sma = df['close'].rolling(window=20).mean().iloc[-1]
-        std = df['close'].rolling(window=20).std().iloc[-1]
-        if pd.isna(sma) or pd.isna(std):
-            sma, std = df['close'].mean(), 2.0
-            
-        bb_upper = sma + (2 * std)
-        bb_lower = sma - (2 * std)
+        # 2. متوسط الحركة الأسسي (EMA 20)
+        df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean()
+        
+        # 3. نطاقات بولينجر (Bollinger Bands)
+        sma_20 = df['close'].rolling(window=20).mean()
+        std_20 = df['close'].rolling(window=20).std()
+        df['bb_upper'] = sma_20 + (2 * std_20)
+        df['bb_lower'] = sma_20 - (2 * std_20)
+        
+        # قراءة آخر قيمة تم تسجيلها في الشارت
+        last_rsi = df['rsi'].iloc[-1]
         last_price = df['close'].iloc[-1]
-
-        # منطق التحليل الفني المدمج والمحترف
-        # (بناءً على تقاطع السعر مع EMA ومناطق تشبع RSI وبولينجر)
-        if last_rsi < 46 or last_price <= bb_lower or last_price > ema_20:
-            signal = "BUY 🟢"
-            desc = (
-                f"شراء قوي 🚀\n"
-                f"- مؤشر RSI: {last_rsi:.1f} (منطقة ارتداد صاعد)\n"
-                f"- متوسط EMA (20): ملائم للصعود\n"
-                f"- بولينجر باند: اقتراب من الحد السفلي\n"
-                f"- الحالة: إشارة مؤكدة وفورية."
-            )
-        elif last_rsi > 54 or last_price >= bb_upper or last_price < ema_20:
+        last_ema = df['ema_20'].iloc[-1]
+        bb_upper = df['bb_upper'].iloc[-1]
+        bb_lower = df['bb_lower'].iloc[-1]
+        
+        # --- منطق التحليل الفني المدمج والقوي ---
+        
+        # شروط البيع القوي
+        if last_rsi > 65 or last_price >= bb_upper:
             signal = "SELL 🔴"
             desc = (
-                f"بيع هابط قوي 🔻\n"
-                f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع شرائي)\n"
+                f"🔻 بيع قوي 📉\n"
+                f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع شرعي/هبوط)\n"
                 f"- متوسط EMA (20): ضغط هبوطي\n"
-                f"- بولينجر باند: اقتراب من الحد العلوي\n"
-                f"- الحالة: إشارة مؤكدة وفورية."
-            )
-        else:
-            signal = "BUY 🟢" if last_rsi <= 50 else "SELL 🔴"
-            desc = (
-                f"إشارة تداول سريعة ⚖️\n"
-                f"- مؤشر RSI: {last_rsi:.1f}\n"
-                f"- الحالة: زخم متوازن واتجاه لحظي مؤكد."
+                f"- بولينجر باند: اقتراب أو ملامسة الحد العلوي\n"
+                f"- الحالة: إشارة مؤكدة وفورية للبيع."
             )
             
+        # شروط الشراء القوي
+        elif last_rsi < 35 or last_price <= bb_lower:
+            signal = "BUY 🟢"
+            desc = (
+                f"🚀 شراء قوي 📈\n"
+                f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع بيعي/ارتداد)\n"
+                f"- متوسط EMA (20): ملائم للصعود\n"
+                f"- بولينجر باند: اقتراب أو ملامسة الحد السفلي\n"
+                f"- الحالة: إشارة مؤكدة وفورية للشراء."
+            )
+            
+        # الحالة الطبيعية أو التذبذب (حياد)
+        else:
+            signal = "NEUTRAL ⚪"
+            desc = (
+                f"⚖️ إشارة تداول جانبية\n"
+                f"- مؤشر RSI: {last_rsi:.1f}\n"
+                f"- الحالة: السوق في منتصف القناة، يفضل الانتظار حتى اقتراب السعر من إحدى الأطراف."
+            )
+
         return signal, desc
+
     except Exception as e:
-        return "BUY 🟢", "إشارة صعود فورية مدعومة بمؤشرات RSI و EMA وبولينجر باند."
+        # في حال حدوث أي خطأ تقني في الحسابات لعدم اكتمال البيانات
+        return "NEUTRAL ⚪", "⚠️ جارِ تحديث البيانات، يرجى الانتظار..."
+        
 
 # --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
