@@ -82,70 +82,64 @@ TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 import pandas as pd
 import numpy as np
 
-def analyze_market(df):
+def analyze_market(df, pair_name, tf_name):
     try:
         # حساب المؤشرات الفنية المطلوبة
-        # 1. مؤشر القوة النسبية (RSI) لفترة 14
         delta = df['close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss
         df['rsi'] = 100 - (100 / (1 + rs))
         
-        # 2. متوسط الحركة الأسسي (EMA 20)
         df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean()
         
-        # 3. نطاقات بولينجر (Bollinger Bands)
         sma_20 = df['close'].rolling(window=20).mean()
         std_20 = df['close'].rolling(window=20).std()
         df['bb_upper'] = sma_20 + (2 * std_20)
         df['bb_lower'] = sma_20 - (2 * std_20)
         
-        # قراءة آخر قيمة تم تسجيلها في الشارت
         last_rsi = df['rsi'].iloc[-1]
         last_price = df['close'].iloc[-1]
-        last_ema = df['ema_20'].iloc[-1]
         bb_upper = df['bb_upper'].iloc[-1]
         bb_lower = df['bb_lower'].iloc[-1]
         
         # --- منطق التحليل الفني المدمج والقوي ---
-        
-        # شروط البيع القوي
         if last_rsi > 65 or last_price >= bb_upper:
             signal = "SELL 🔴"
             desc = (
                 f"🔻 بيع قوي 📉\n"
+                f"- الزوج: {pair_name} 📊\n"
+                f"- الفريم: {tf_name} ⏰\n"
                 f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع شرعي/هبوط)\n"
                 f"- متوسط EMA (20): ضغط هبوطي\n"
-                f"- بولينجر باند: اقتراب أو ملامسة الحد العلوي\n"
+                f"- بولينجر باند: اقتراب الحد العلوي\n"
                 f"- الحالة: إشارة مؤكدة وفورية للبيع."
             )
-            
-        # شروط الشراء القوي
         elif last_rsi < 35 or last_price <= bb_lower:
             signal = "BUY 🟢"
             desc = (
                 f"🚀 شراء قوي 📈\n"
+                f"- الزوج: {pair_name} 📊\n"
+                f"- الفريم: {tf_name} ⏰\n"
                 f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع بيعي/ارتداد)\n"
                 f"- متوسط EMA (20): ملائم للصعود\n"
-                f"- بولينجر باند: اقتراب أو ملامسة الحد السفلي\n"
+                f"- بولينجر باند: اقتراب الحد السفلي\n"
                 f"- الحالة: إشارة مؤكدة وفورية للشراء."
             )
-            
-        # الحالة الطبيعية أو التذبذب (حياد)
         else:
             signal = "NEUTRAL ⚪"
             desc = (
                 f"⚖️ إشارة تداول جانبية\n"
+                f"- الزوج: {pair_name} 📊\n"
+                f"- الفريم: {tf_name} ⏰\n"
                 f"- مؤشر RSI: {last_rsi:.1f}\n"
-                f"- الحالة: السوق في منتصف القناة، يفضل الانتظار حتى اقتراب السعر من إحدى الأطراف."
+                f"- الحالة: السوق في منتصف القناة، يفضل الانتظار."
             )
 
         return signal, desc
 
     except Exception as e:
-        # في حال حدوث أي خطأ تقني في الحسابات لعدم اكتمال البيانات
-        return "NEUTRAL ⚪", "⚠️ جارِ تحديث البيانات، يرجى الانتظار..."
+        return "NEUTRAL ⚪", f"⚠️ خطأ في تحليل {pair_name}، يجدر الانتظار..."
         
 
 # --- واجهة تليجرام ---
