@@ -239,34 +239,39 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, parse_mode="Markdown")
 
-    elif data.startswith("tf_"):
+        elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
             
-            # --- إنشاء بيانات DataFrame افتراضية أو حقيقية للتحليل لكي يعمل الفريم ---
-        import pandas as pd
-        import numpy as np
-            
-            # توليد أسعار وهمية مؤقتة للاختبار الفوري لحين ربطها بمصدر بيانات حقيقي
-        np.random.seed(42)
-        close_prices = 100 + np.cumsum(np.random.randn(100) * 0.5)
-        df = pd.DataFrame({'close': close_prices})
-            # -------------------------------------------------------------------
-            
-        signal, desc = analyze_market(df, pair_name, tf_name)
-            
-        result_text = f"📊 **نتيجة التحليل**\n" \
-                      f"─────────────────\n" \
-                      f"🔹 الزوج: `{pair_name}`\n" \
-                      f"⏰ الفريم: `{tf_name}`\n\n" \
-                      f"{desc}"
-            
-        keyboard = [
-            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
-            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+        try:
+            # --- إنشاء بيانات DataFrame للاختبار والتحليل ---
+            import pandas as pd
+            import numpy as np
+                
+            np.random.seed(42)
+            close_prices = 100 + np.cumsum(np.random.randn(100) * 0.5)
+            df = pd.DataFrame({'close': close_prices})
+                
+            signal, desc = analyze_market(df, pair_name, tf_name)
+                
+            result_text = (f"📊 **نتيجة التحليل**\n"
+                           f"─────────────────\n"
+                           f"🔹 الزوج: `{pair_name}`\n"
+                           f"⏰ الفريم: `{tf_name}`\n\n"
+                           f"{desc}")
+                
+            keyboard = [
+                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
             ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
+            
+        except Exception as e:
+            print(f"Error in timeframe handler: {e}")
+            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}", parse_mode='Markdown')
+            
                 
     
 def main():
