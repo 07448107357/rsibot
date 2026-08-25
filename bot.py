@@ -251,9 +251,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             import pandas as pd
             import numpy as np
             
-            np.random.seed(42)
-            close_prices = 100 + np.cumsum(np.random.randn(100) * 0.5)
+            np.random.seed(None)
+            x = np.linspace(0, 40, 100)
+            close_prices = 100 + (np.sin(x) * 3) + np.cumsum(np.random.randn(100) * 0.4)
             df = pd.DataFrame({'close': close_prices})
+            
             
             analysis_result = analyze_market(df, pair_name, tf_name)
             if analysis_result is not None and isinstance(analysis_result, tuple) and len(analysis_result) == 2:
