@@ -83,63 +83,60 @@ import pandas as pd
 import numpy as np
 
 def analyze_market(df, pair_name, tf_name):
-    try:
-        # حساب المؤشرات الفنية المطلوبة
-        delta = df['close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
-        df['rsi'] = 100 - (100 / (1 + rs))
-        
-        df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean()
-        
-        sma_20 = df['close'].rolling(window=20).mean()
-        std_20 = df['close'].rolling(window=20).std()
-        df['bb_upper'] = sma_20 + (2 * std_20)
-        df['bb_lower'] = sma_20 - (2 * std_20)
-        
-        last_rsi = df['rsi'].iloc[-1]
-        last_price = df['close'].iloc[-1]
-        bb_upper = df['bb_upper'].iloc[-1]
-        bb_lower = df['bb_lower'].iloc[-1]
-        
-        # --- منطق التحليل الفني المدمج والقوي ---
-        if last_rsi > 65 or last_price >= bb_upper:
-            signal = "SELL 🔴"
-            desc = (
-                f"🔻 بيع قوي 📉\n"
-                f"- الزوج: {pair_name} 📊\n"
-                f"- الفريم: {tf_name} ⏰\n"
-                f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع شرعي/هبوط)\n"
-                f"- متوسط EMA (20): ضغط هبوطي\n"
-                f"- بولينجر باند: اقتراب الحد العلوي\n"
-                f"- الحالة: إشارة مؤكدة وفورية للبيع."
-            )
-        elif last_rsi < 35 or last_price <= bb_lower:
-            signal = "BUY 🟢"
-            desc = (
-                f"🚀 شراء قوي 📈\n"
-                f"- الزوج: {pair_name} 📊\n"
-                f"- الفريم: {tf_name} ⏰\n"
-                f"- مؤشر RSI: {last_rsi:.1f} (منطقة تشبع بيعي/ارتداد)\n"
-                f"- متوسط EMA (20): ملائم للصعود\n"
-                f"- بولينجر باند: اقتراب الحد السفلي\n"
-                f"- الحالة: إشارة مؤكدة وفورية للشراء."
-            )
-        else:
-            signal = "NEUTRAL ⚪"
-            desc = (
-                f"⚖️ إشارة تداول جانبية\n"
-                f"- الزوج: {pair_name} 📊\n"
-                f"- الفريم: {tf_name} ⏰\n"
-                f"- مؤشر RSI: {last_rsi:.1f}\n"
-                f"- الحالة: السوق في منتصف القناة، يفضل الانتظار."
-            )
+    import pandas as pd
+    import numpy as np
 
-        return signal, desc
+    # التأكد من وجود أسعار الإغلاق
+    closes = df['close']
 
-    except Exception as e:
-        return "NEUTRAL ⚪", f"⚠️ خطأ في تحليل {pair_name}، يجدر الانتظار..."
+    # 1. حساب مؤشر القوة النسبية RSI (فترة 14)
+    delta = closes.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    rsi_series = 100 - (100 / (1 + rs))
+    current_rsi = rsi_series.iloc[-1]
+    if pd.isna(current_rsi):
+        current_rsi = 50.0
+
+    # 2. حساب مؤشر بولينجر بانز (Bollinger Bands - فترة 20 والانحراف 2)
+    window = 20
+    sma = closes.rolling(window=window).mean()
+    std = closes.rolling(window=window).std()
+    upper_band = sma + (std * 2)
+    lower_band = sma - (std * 2)
+    
+    current_price = closes.iloc[-1]
+    current_upper = upper_band.iloc[-1]
+    current_lower = lower_band.iloc[-1]
+    current_sma = sma.iloc[-1]
+
+    if pd.isna(current_upper):
+        current_upper = current_price * 1.01
+        current_lower = current_price * 0.99
+        current_sma = current_price
+
+    # 3. منطق إعطاء التوصية بناءً على المؤشرات مجتمعة
+    signal = "WAIT"
+    if current_price <= current_lower or current_rsi < 30:
+        signal = "CALL"
+        desc = (f"📈 **إشارة شراء / صعود (CALL)**\n"
+                f"• المؤشرات: السعر لامس الخط السفلي للبولينجر أو RSI متدنٍ جداً.\n"
+                f"• مؤشر RSI: `{current_rsi:.1f}`\n"
+                f"• الحالة: فرصة محتملة للصعود.")
+    elif current_price >= current_upper or current_rsi > 70:
+        signal = "PUT"
+        desc = (f"📉 **إشارة بيع / هبوط (PUT)**\n"
+                f"• المؤشرات: السعر لامس الخط العلوي للبولينجر أو RSI مرتفع جداً.\n"
+                f"• مؤشر RSI: `{current_rsi:.1f}`\n"
+                f"• الحالة: فرصة محتملة للهبوط.")
+    else:
+        desc = (f"⚖️ **إشارة تداول جانبية**\n"
+                f"• مؤشر RSI: `{current_rsi:.1f}`\n"
+                f"• الحالة: السعر داخل حدود بولينجر بانز وفي منتصف القناة، يفضل الانتظار حتى يلامس الأطراف.")
+
+    return signal, desc
+    
         
 
 # --- واجهة تليجرام ---
