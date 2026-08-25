@@ -239,7 +239,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, parse_mode="Markdown")
 
-        elif data.startswith("tf_"):
+    elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
             
