@@ -258,6 +258,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         signal, desc = "WAIT", "⚠️ عذراً، لم يُرجِع مؤشر التحليل أي بيانات لهذا الفريم."
             
+            
                 
             result_text = (f"📊 **نتيجة التحليل**\n"
                            f"─────────────────\n"
