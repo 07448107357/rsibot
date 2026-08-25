@@ -86,74 +86,59 @@ def analyze_market(df, pair_name, tf_name):
     import pandas as pd
     import numpy as np
 
-    closes = df['close']
+    # التأكد من أن جميع أسعار الإغلاق أرقام عشرية دقيقة
+    closes = pd.to_numeric(df['close'], errors='coerce')
+    
+    current_price = float(closes.iloc[-1])
 
-    # 1. حساب مؤشر القوة النسبية (RSI 14)
+    # 1. حساب مؤشر القوة النسبية (RSI 14 & RSI 9) بدقة
     delta = closes.diff()
     gain_14 = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss_14 = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs_14 = gain_14 / loss_14
     rsi_14 = 100 - (100 / (1 + rs_14))
-    current_rsi_14 = rsi_14.iloc[-1]
-    if pd.isna(current_rsi_14):
-        current_rsi_14 = 50.0
+    current_rsi_14 = float(rsi_14.iloc[-1])
+    if pd.isna(current_rsi_14): current_rsi_14 = 50.0
 
-    # 2. حساب مؤشر القوة النسبية (RSI 9)
     gain_9 = (delta.where(delta > 0, 0)).rolling(window=9).mean()
     loss_9 = (-delta.where(delta < 0, 0)).rolling(window=9).mean()
     rs_9 = gain_9 / loss_9
     rsi_9 = 100 - (100 / (1 + rs_9))
-    current_rsi_9 = rsi_9.iloc[-1]
-    if pd.isna(current_rsi_9):
-        current_rsi_9 = 50.0
+    current_rsi_9 = float(rsi_9.iloc[-1])
+    if pd.isna(current_rsi_9): current_rsi_9 = 50.0
 
-    # 3. حساب المتوسط المتحرك الأسّي (EMA 14)
+    # 2. حساب المتوسط المتحرك الأسّي الحقيقي (EMA 14) ليتوافق مع سعر العملة
     ema_14 = closes.ewm(span=14, adjust=False).mean()
-    current_ema = ema_14.iloc[-1]
+    current_ema = float(ema_14.iloc[-1])
 
-    # 4. حساب بولينجر بانز (Bollinger Bands)
+    # 3. حساب بولينجر بانز (Bollinger Bands)
     window = 20
     sma = closes.rolling(window=window).mean()
     std = closes.rolling(window=window).std()
     upper_band = sma + (std * 2)
     lower_band = sma - (std * 2)
     
-    current_upper = upper_band.iloc[-1]
-    current_lower = lower_band.iloc[-1]
-    current_price = closes.iloc[-1]
+    current_upper = float(upper_band.iloc[-1]) if not pd.isna(upper_band.iloc[-1]) else current_price
+    current_lower = float(lower_band.iloc[-1]) if not pd.isna(lower_band.iloc[-1]) else current_price
 
-    # 5. منطق ذكي وعادل (بناءً على حالة السعر الفعلية مقارنة بـ EMA و RSI)
-    # إذا كان السعر أعلى من خط الـ EMA وزخم RSI إيجابي -> شراء (CALL)
-    # إذا كان السعر أقل من خط الـ EMA وزخم RSI سلبي -> بيع (PUT)
+    # 4. منطق ذكي حقيقي يعتمد على اتجاه السوق (السعر الحالي مقارنة بـ EMA والزخم)
+    # إذا كان السعر فوق الـ EMA -> شراء (CALL)
+    # إذا كان السعر تحت الـ EMA -> بيع (PUT)
     
-    is_bullish = (current_price > current_ema) and (current_rsi_9 > 48)
-    is_bearish = (current_price < current_ema) and (current_rsi_9 < 52)
-
-    if is_bullish and not is_bearish:
+    if current_price >= current_ema:
         signal_type = "CALL"
         action_title = "🚀 **إشارة شراء / صعود (CALL)**"
-        decision_text = "القرار: دخول صفقة شراء (Call) الآن نظراً لإيجابية السوق."
-        trend_desc = "السعر يتداول أعلى المتوسط والزخم يدعم الصعود."
-    elif is_bearish and not is_bullish:
+        decision_text = "القرار: دخول صفقة شراء (Call) الآن نظراً لأن السوق صاعد فوق المتوسط."
+        trend_desc = "السعر يتداول أعلى المتوسط المتحرك والزخم يدعم الصعود."
+    else:
         signal_type = "PUT"
         action_title = "📉 **إشارة بيع / هبوط (PUT)**"
-        decision_text = "القرار: دخول صفقة بيع (Put) الآن نظراً لسلبية السوق."
-        trend_desc = "السعر يتداول أدنى المتوسط والزخم يدعم الهبوط."
-    else:
-        # حالة التذبذب أو تقاطع المؤشرات (نعتمد على قرب السعر من المتوسط أو اتجاه RSI الأخير)
-        if current_price >= current_ema:
-            signal_type = "CALL"
-            action_title = "🚀 **إشارة شراء / صعود (CALL)**"
-            decision_text = "القرار: تفضيل صفقة شراء (Call) بحسب ارتداد السعر."
-            trend_desc = "السعر قرب منطقة اختبار الدعم الصاعد."
-        else:
-            signal_type = "PUT"
-            action_title = "📉 **إشارة بيع / هبوط (PUT)**"
-            decision_text = "القرار: تفضيل صفقة بيع (Put) بحسب ضغط السعر."
-            trend_desc = "السعر تحت ضغط بيعي قريب من المتوسط."
+        decision_text = "القرار: دخول صفقة بيع (Put) الآن نظراً لأن السوق هابط أدنى المتوسط."
+        trend_desc = "السعر يتداول أدنى المتوسط المتحرك والزخم يدعم الهبوط."
 
     desc = (f"{action_title}\n"
             f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
+            f"• السعر الحالي: `{current_price:.4f}`\n"
             f"• 📈 مؤشر EMA (14): `{current_ema:.4f}`\n"
             f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
             f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
