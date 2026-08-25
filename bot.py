@@ -90,24 +90,24 @@ def analyze_market(df, pair_name, tf_name):
 
     # 1. حساب مؤشر القوة النسبية (RSI 14)
     delta = closes.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    rsi_1 = 100 - (100 / (1 + rs))
-    current_rsi_1 = rsi_1.iloc[-1]
-    if pd.isna(current_rsi_1):
-        current_rsi_1 = 50.0
+    gain_14 = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss_14 = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs_14 = gain_14 / loss_14
+    rsi_14 = 100 - (100 / (1 + rs_14))
+    current_rsi_14 = rsi_14.iloc[-1]
+    if pd.isna(current_rsi_14):
+        current_rsi_14 = 50.0
 
-    # 2. حساب مؤشر القوة النسبية السريع (RSI 9)
-    gain_2 = (delta.where(delta > 0, 0)).rolling(window=9).mean()
-    loss_2 = (-delta.where(delta < 0, 0)).rolling(window=9).mean()
-    rs_2 = gain_2 / loss_2
-    rsi_2 = 100 - (100 / (1 + rs_2))
-    current_rsi_2 = rsi_2.iloc[-1]
-    if pd.isna(current_rsi_2):
-        current_rsi_2 = 50.0
+    # 2. حساب مؤشر القوة النسبية (RSI 9)
+    gain_9 = (delta.where(delta > 0, 0)).rolling(window=9).mean()
+    loss_9 = (-delta.where(delta < 0, 0)).rolling(window=9).mean()
+    rs_9 = gain_9 / loss_9
+    rsi_9 = 100 - (100 / (1 + rs_9))
+    current_rsi_9 = rsi_9.iloc[-1]
+    if pd.isna(current_rsi_9):
+        current_rsi_9 = 50.0
 
-    # 3. حساب مؤشر المتوسط المتحرك الأسّي (EMA 14)
+    # 3. حساب المتوسط المتحرك الأسّي (EMA 14)
     ema_14 = closes.ewm(span=14, adjust=False).mean()
     current_ema = ema_14.iloc[-1]
 
@@ -118,32 +118,28 @@ def analyze_market(df, pair_name, tf_name):
     upper_band = sma + (std * 2)
     lower_band = sma - (std * 2)
     
+    current_upper = upper_band.iloc[-1]
+    current_lower = lower_band.iloc[-1]
     current_price = closes.iloc[-1]
-    prev_price = closes.iloc[-2] if len(closes) > 1 else current_price
 
-    # 5. منطق اتخاذ القرار (شراء أو بيع بناءً على توافق المؤشرات مع حركة السعر)
-    # إذا كان السعر فوق الـ EMA والـ RSI يدعم الصعود -> شراء (CALL)
-    # إذا كان السعر تحت الـ EMA والـ RSI يدعم الهبوط -> بيع (PUT)
-    
-    is_bullish = (current_price > current_ema) and (current_rsi_2 > 45)
-    is_bearish = (current_price < current_ema) and (current_rsi_2 < 55)
-
-    if is_bullish and not (current_price < lower_band.iloc[-1] and current_rsi_1 < 30):
+    # 5. منطق قرار عادل وديناميكي (شراء إذا كان السوق صاعداً، بيع إذا كان هابطاً)
+    # يعتمد على مكان السعر بالنسبة للـ EMA ومؤشرات الـ RSI
+    if current_price >= current_ema and current_rsi_9 > 45:
         desc = (f"🚀 **إشارة شراء / صعود (CALL)**\n"
                 f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
-                f"• 📈 مؤشر EMA (14): `{current_ema:.2f}`\n"
-                f"• 📊 مؤشر RSI (14): `{current_rsi_1:.1f}`\n"
-                f"• 📊 مؤشر RSI (9): `{current_rsi_2:.1f}`\n"
-                f"• 🌐 بولينجر بانز و EMA: السعر يدعم الصعود.\n"
+                f"• 📈 مؤشر EMA (14): `{current_ema:.4f}`\n"
+                f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
+                f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
+                f"• 🌐 بولينجر بانز و EMA: السعر في مسار صاعد.\n"
                 f"• القرار: دخول صفقة شراء (Call) الآن.")
         return "CALL", desc
     else:
         desc = (f"📉 **إشارة بيع / هبوط (PUT)**\n"
                 f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
-                f"• 📉 مؤشر EMA (14): `{current_ema:.2f}`\n"
-                f"• 📊 مؤشر RSI (14): `{current_rsi_1:.1f}`\n"
-                f"• 📊 مؤشر RSI (9): `{current_rsi_2:.1f}`\n"
-                f"• 🌐 بولينجر بانز و EMA: السعر يدعم الهبوط.\n"
+                f"• 📉 مؤشر EMA (14): `{current_ema:.4f}`\n"
+                f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
+                f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
+                f"• 🌐 بولينجر بانز و EMA: السعر في مسار هابط.\n"
                 f"• القرار: دخول صفقة بيع (Put) الآن.")
         return "PUT", desc
         
