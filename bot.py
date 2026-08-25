@@ -222,16 +222,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
                 
     
-  def main():
-      try:
-          app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-      except RuntimeError:
-          loop = asyncio.new_event_loop()
-          asyncio.set_event_loop(loop)
-          app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+def main():
+    try:
+        app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
-  if __name__ == '__main__':
-      main()
+if __name__ == '__main__':
+    main()
     
     
 
