@@ -182,8 +182,8 @@ def analyze_market(df, pair_name, tf_name):
         decision_text = f"القرار: دخول صفقة بيع (Put) — الزخم يدعم الهبوط."
         trend_desc = "المؤشرات الفنية تميل لصالح الاتجاه الهابط."
     else:
-        if 'signal_type' not in locals():
-        signal_type = "WAIT"
+    if 'signal_type' not in locals():
+    signal_type = "WAIT"
     if 'desc' not in locals():
         desc = "📊 التحليل الفني جاهز — السوق في حالة ترقب."
 
