@@ -225,17 +225,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     TOKEN = os.environ.get("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
-    
-    # هنا تضع الـ handlers (أوامر الـ start والـ handlers الخاصة بالأزرار)
+
+    # إضافة المعالجات (Handlers)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
+
+    print("Bot is starting...")
     
-    try:
-        app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+    # التشغيل المباشر والمستقر
+    app.run_polling(drop_pending_updates=True)
+
+if __name__ == '__main__':
+    main()
+    
         
     
     
