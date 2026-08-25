@@ -86,20 +86,28 @@ def analyze_market(df, pair_name, tf_name):
     import pandas as pd
     import numpy as np
 
-    # التأكد من وجود أسعار الإغلاق
     closes = df['close']
 
-    # 1. حساب مؤشر القوة النسبية RSI (فترة 14)
+    # 1. حساب مؤشر القوة النسبية الأول (RSI 14)
     delta = closes.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
-    rsi_series = 100 - (100 / (1 + rs))
-    current_rsi = rsi_series.iloc[-1]
-    if pd.isna(current_rsi):
-        current_rsi = 50.0
+    rsi_1 = 100 - (100 / (1 + rs))
+    current_rsi_1 = rsi_1.iloc[-1]
+    if pd.isna(current_rsi_1):
+        current_rsi_1 = 50.0
 
-    # 2. حساب مؤشر بولينجر بانز (Bollinger Bands - فترة 20 والانحراف 2)
+    # 2. حساب مؤشر القوة النسبية الثاني (RSI قصير الفترة - مثل RSI 9 لتأكيد الزخم السريع)
+    gain_2 = (delta.where(delta > 0, 0)).rolling(window=9).mean()
+    loss_2 = (-delta.where(delta < 0, 0)).rolling(window=9).mean()
+    rs_2 = gain_2 / loss_2
+    rsi_2 = 100 - (100 / (1 + rs_2))
+    current_rsi_2 = rsi_2.iloc[-1]
+    if pd.isna(current_rsi_2):
+        current_rsi_2 = 50.0
+
+    # 3. حساب مؤشر بولينجر بانز (Bollinger Bands - فترة 20)
     window = 20
     sma = closes.rolling(window=window).mean()
     std = closes.rolling(window=window).std()
@@ -107,36 +115,55 @@ def analyze_market(df, pair_name, tf_name):
     lower_band = sma - (std * 2)
     
     current_price = closes.iloc[-1]
-    current_upper = upper_band.iloc[-1]
-    current_lower = lower_band.iloc[-1]
-    current_sma = sma.iloc[-1]
+    current_upper = upper_band.iloc[-1] if not pd.isna(upper_band.iloc[-1]) else current_price * 1.01
+    current_lower = lower_band.iloc[-1] if not pd.isna(lower_band.iloc[-1]) else current_price * 0.99
 
-    if pd.isna(current_upper):
-        current_upper = current_price * 1.01
-        current_lower = current_price * 0.99
-        current_sma = current_price
+    # 4. دمج المؤشرات الثلاثة لإعطاء توصية فورية صارمة (شراء أو بيع حصراً بدون انتظار)
+    # نحسب نقاط قوة للمؤشرات الثلاثة معا
+    call_score = 0
+    put_score = 0
 
-    # 3. منطق إعطاء التوصية بناءً على المؤشرات مجتمعة
-    signal = "WAIT"
-    if current_price <= current_lower or current_rsi < 30:
-        signal = "CALL"
-        desc = (f"📈 **إشارة شراء / صعود (CALL)**\n"
-                f"• المؤشرات: السعر لامس الخط السفلي للبولينجر أو RSI متدنٍ جداً.\n"
-                f"• مؤشر RSI: `{current_rsi:.1f}`\n"
-                f"• الحالة: فرصة محتملة للصعود.")
-    elif current_price >= current_upper or current_rsi > 70:
-        signal = "PUT"
-        desc = (f"📉 **إشارة بيع / هبوط (PUT)**\n"
-                f"• المؤشرات: السعر لامس الخط العلوي للبولينجر أو RSI مرتفع جداً.\n"
-                f"• مؤشر RSI: `{current_rsi:.1f}`\n"
-                f"• الحالة: فرصة محتملة للهبوط.")
+    # فحص بولينجر بانز
+    if current_price <= current_lower:
+        call_score += 2
+    elif current_price >= current_upper:
+        put_score += 2
     else:
-        desc = (f"⚖️ **إشارة تداول جانبية**\n"
-                f"• مؤشر RSI: `{current_rsi:.1f}`\n"
-                f"• الحالة: السعر داخل حدود بولينجر بانز وفي منتصف القناة، يفضل الانتظار حتى يلامس الأطراف.")
+        # إذا كان السعر في المنتصف، نقارن بموقع السعر الحالي لتجنب الانتظار
+        if current_price >= sma.iloc[-1]:
+            call_score += 1
+        else:
+            put_score += 1
 
-    return signal, desc
-    
+    # فحص مؤشر RSI الأول
+    if current_rsi_1 <= 50:
+        call_score += 1
+    else:
+        put_score += 1
+
+    # فحص مؤشر RSI الثاني (الزخم السريع)
+    if current_rsi_2 <= 50:
+        call_score += 1
+    else:
+        put_score += 1
+
+    # القرار النهائي الفوري بدون أي كلمة انتظار
+    if call_score >= put_score:
+        desc = (f"🚀 **إشارة شراء / صعود (CALL)**\n"
+                f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
+                f"• 📊 مؤشر RSI (14): `{current_rsi_1:.1f}`\n"
+                f"• 📊 مؤشر RSI (9): `{current_rsi_2:.1f}`\n"
+                f"• 🌐 بولينجر بانز: السعر يتجه للصعود من النطاق.\n"
+                f"• القرار: دخول صفقة شراء الآن فوراً.")
+        return "CALL", desc
+    else:
+        desc = (f"📉 **إشارة بيع / هبوط (PUT)**\n"
+                f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
+                f"• 📊 مؤشر RSI (14): `{current_rsi_1:.1f}`\n"
+                f"• 📊 مؤشر RSI (9): `{current_rsi_2:.1f}`\n"
+                f"• 🌐 بولينجر بانز: السعر يتجه للهبوط من النطاق.\n"
+                f"• القرار: دخول صفقة بيع الآن فوراً.")
+        return "PUT", desc
         
 
 # --- واجهة تليجرام ---
