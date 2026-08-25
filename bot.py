@@ -122,28 +122,46 @@ def analyze_market(df, pair_name, tf_name):
     current_lower = lower_band.iloc[-1]
     current_price = closes.iloc[-1]
 
-    # 5. منطق قرار عادل وديناميكي (شراء إذا كان السوق صاعداً، بيع إذا كان هابطاً)
-    # يعتمد على مكان السعر بالنسبة للـ EMA ومؤشرات الـ RSI
-    if current_price >= current_ema and current_rsi_9 > 45:
-        desc = (f"🚀 **إشارة شراء / صعود (CALL)**\n"
-                f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
-                f"• 📈 مؤشر EMA (14): `{current_ema:.4f}`\n"
-                f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
-                f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
-                f"• 🌐 بولينجر بانز و EMA: السعر في مسار صاعد.\n"
-                f"• القرار: دخول صفقة شراء (Call) الآن.")
-        return "CALL", desc
+    # 5. منطق ذكي وعادل (بناءً على حالة السعر الفعلية مقارنة بـ EMA و RSI)
+    # إذا كان السعر أعلى من خط الـ EMA وزخم RSI إيجابي -> شراء (CALL)
+    # إذا كان السعر أقل من خط الـ EMA وزخم RSI سلبي -> بيع (PUT)
+    
+    is_bullish = (current_price > current_ema) and (current_rsi_9 > 48)
+    is_bearish = (current_price < current_ema) and (current_rsi_9 < 52)
+
+    if is_bullish and not is_bearish:
+        signal_type = "CALL"
+        action_title = "🚀 **إشارة شراء / صعود (CALL)**"
+        decision_text = "القرار: دخول صفقة شراء (Call) الآن نظراً لإيجابية السوق."
+        trend_desc = "السعر يتداول أعلى المتوسط والزخم يدعم الصعود."
+    elif is_bearish and not is_bullish:
+        signal_type = "PUT"
+        action_title = "📉 **إشارة بيع / هبوط (PUT)**"
+        decision_text = "القرار: دخول صفقة بيع (Put) الآن نظراً لسلبية السوق."
+        trend_desc = "السعر يتداول أدنى المتوسط والزخم يدعم الهبوط."
     else:
-        desc = (f"📉 **إشارة بيع / هبوط (PUT)**\n"
-                f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
-                f"• 📉 مؤشر EMA (14): `{current_ema:.4f}`\n"
-                f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
-                f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
-                f"• 🌐 بولينجر بانز و EMA: السعر في مسار هابط.\n"
-                f"• القرار: دخول صفقة بيع (Put) الآن.")
-        return "PUT", desc
-        
-        
+        # حالة التذبذب أو تقاطع المؤشرات (نعتمد على قرب السعر من المتوسط أو اتجاه RSI الأخير)
+        if current_price >= current_ema:
+            signal_type = "CALL"
+            action_title = "🚀 **إشارة شراء / صعود (CALL)**"
+            decision_text = "القرار: تفضيل صفقة شراء (Call) بحسب ارتداد السعر."
+            trend_desc = "السعر قرب منطقة اختبار الدعم الصاعد."
+        else:
+            signal_type = "PUT"
+            action_title = "📉 **إشارة بيع / هبوط (PUT)**"
+            decision_text = "القرار: تفضيل صفقة بيع (Put) بحسب ضغط السعر."
+            trend_desc = "السعر تحت ضغط بيعي قريب من المتوسط."
+
+    desc = (f"{action_title}\n"
+            f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
+            f"• 📈 مؤشر EMA (14): `{current_ema:.4f}`\n"
+            f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
+            f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
+            f"• 🌐 الاتجاه الفني: {trend_desc}\n"
+            f"• {decision_text}")
+            
+    return signal_type, desc
+    
 
 # --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
