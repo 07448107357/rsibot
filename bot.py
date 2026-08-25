@@ -252,11 +252,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             close_prices = 100 + np.cumsum(np.random.randn(100) * 0.5)
             df = pd.DataFrame({'close': close_prices})
                 
-            analysis_result = analyze_market(df, pair_name, tf_name)
+        analysis_result = analyze_market(df, pair_name, tf_name)
         if analysis_result is not None and isinstance(analysis_result, tuple) and len(analysis_result) == 2:
-         signal, desc = analysis_result
-     else:
-         signal, desc = "WAIT", "⚠️ عذراً، لم يُرجِع مؤشر التحليل أي بيانات لهذا الفريم."
+            signal, desc = analysis_result
+        else:
+            signal, desc = "WAIT", "⚠️ عذراً، لم يُرجِع مؤشر التحليل أي بيانات لهذا الفريم."
+            
             
             
                 
