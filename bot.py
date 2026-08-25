@@ -181,17 +181,17 @@ def analyze_market(df, pair_name, tf_name):
     
         
     
-import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
+    import os
+    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
 
-from real_data_fetcher import fetch_real_data, TIMEFRAMES
-# analyze_market: انسخ الدالة المصححة (analyze_market_fixed.py) في نفس الملف أو استوردها من ملف منفصل
-# from analyze_market_fixed import analyze_market
+    from real_data_fetcher import fetch_real_data, TIMEFRAMES
+    # analyze_market: انسخ الدالة المصححة (analyze_market_fixed.py) في نفس الملف أو استوردها من ملف منفصل
+    # from analyze_market_fixed import analyze_market
 
-# CATEGORIES: عدّل هذه القائمة حسب الأزواج التي تريد دعمها فعلياً.
-# ملاحظة: أزواج OTC لا تُدعم لعدم وجود بيانات حقيقية لها (راجع real_data_fetcher.py)
-CATEGORIES = {
+    # CATEGORIES: عدّل هذه القائمة حسب الأزواج التي تريد دعمها فعلياً.
+    # ملاحظة: أزواج OTC لا تُدعم لعدم وجود بيانات حقيقية لها (راجع real_data_fetcher.py)
+    CATEGORIES = {
     "💱 العملات (Forex)": ["EUR/USD", "GBP/USD", "USD/JPY"],
     "🪙 العملات الرقمية (Crypto)": ["BTC/USDT", "ETH/USDT", "BNB/USDT"],
 }
