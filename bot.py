@@ -27,7 +27,7 @@ threading.Thread(target=run_web, daemon=True).start()
 
      # --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---
 
-    CATEGORIES = {
+CATEGORIES = {
     "💱 العملات (Forex)": [
         "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC",
         "🇺🇦🇺🇸 UAH/USD OTC", "🇧🇩🇺🇸 USD/BDT OTC",
