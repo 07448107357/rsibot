@@ -3,7 +3,10 @@ import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import pandas as pd
+import numpy as np
+
 from real_data_fetcher import fetch_real_data, TIMEFRAMES
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -25,8 +28,7 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 
-     # --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---
-
+# --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---
 CATEGORIES = {
     "💱 العملات (Forex)": [
         "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC",
@@ -50,10 +52,8 @@ CATEGORIES = {
         "🇸🇬🇺🇸 USD/SGD OTC", "🇸🇦🇨🇳 SAR/CNY OTC",
         "🇨🇳🇺🇸 USD/CNH OTC", "🇶🇦🇨🇳 QAR/CNY OTC",
         "🇳🇿🇺🇸 NZD/USD OTC",
-        # الأزواج السويسرية الإضافية بدقة
         "🇬🇧🇨🇭 GBP/CHF OTC", "🇦🇺🇨🇭 AUD/CHF OTC",
         "🇳🇿🇨🇭 NZD/CHF OTC"
-
     ],
     "🟡 العملات الرقمية (Crypto)": [
         "🗿 Bitcoin ETF OTC", "🥈 Litecoin OTC",
@@ -77,15 +77,9 @@ CATEGORIES = {
         "🏦 Citigroup OTC", "👁️ Palantir OTC",
         "🟦 Intel OTC"
     ]
-    }
-
-import pandas as pd
-import numpy as np
+}
 
 def analyze_market(df, pair_name, tf_name):
-    import pandas as pd
-    import numpy as np
-
     df = df.copy()
 
     # --- التأكد من ترتيب البيانات تصاعدياً حسب الوقت ---
@@ -128,11 +122,7 @@ def analyze_market(df, pair_name, tf_name):
     current_upper = float(upper_band.iloc[-1]) if not pd.isna(upper_band.iloc[-1]) else current_price
     current_lower = float(lower_band.iloc[-1]) if not pd.isna(lower_band.iloc[-1]) else current_price
 
-    # --- نظام تصويت متوازن: كل عامل له نفس الوزن بالضبط في الاتجاهين،
-    # وحالة التعادل تُحتسب صفراً (لا تصويت لأي جهة) بدل ترجيحها للشراء ---
-
     def vote(a, b):
-        """يرجع +1 إذا a أكبر من b، -1 إذا أصغر، 0 عند التساوي التام."""
         if a > b:
             return 1
         elif a < b:
@@ -140,27 +130,16 @@ def analyze_market(df, pair_name, tf_name):
         return 0
 
     score = 0.0
-
-    # (أ) السعر مقابل EMA — وزن متساوٍ في الاتجاهين
     score += vote(current_price, current_ema)
-
-    # (ب) ميل EMA نفسه
     score += vote(current_ema, prev_ema)
-
-    # (ج) منطقة RSI14 — المنتصف الحقيقي هو 50
     score += vote(current_rsi_14, 50)
-
-    # (د) تقاطع RSI9 مع RSI14
     score += vote(current_rsi_9, current_rsi_14)
 
-    # (هـ) موقع السعر داخل نطاق بولينجر — المنتصف الحقيقي هو 0.5
     band_width = current_upper - current_lower
     if band_width > 0:
         position_in_band = (current_price - current_lower) / band_width
         score += vote(position_in_band, 0.5)
-    # إذا كان band_width == 0 (سوق شبه ثابت) لا يصوّت هذا العامل لأي جهة
 
-    # القرار النهائي: >0 شراء، <0 بيع، =0 انتظار (تعادل حقيقي في القوى)
     if score > 0:
         signal_type = "CALL"
         action_title = "🚀 **إشارة شراء / صعود (CALL)**"
@@ -178,23 +157,6 @@ def analyze_market(df, pair_name, tf_name):
         trend_desc = "تعادل حقيقي في القوى بين الصعود والهبوط."
 
     return signal_type, f"{action_title}\n{decision_text}\n{trend_desc}"
-    
-        
-    
-    import os
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-    from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler
-
-    from real_data_fetcher import fetch_real_data, TIMEFRAMES
-    # analyze_market: انسخ الدالة المصححة (analyze_market_fixed.py) في نفس الملف أو استوردها من ملف منفصل
-    # from analyze_market_fixed import analyze_market
-
-    # CATEGORIES: عدّل هذه القائمة حسب الأزواج التي تريد دعمها فعلياً.
-    # ملاحظة: أزواج OTC لا تُدعم لعدم وجود بيانات حقيقية لها (راجع real_data_fetcher.py)
-    CATEGORIES = {
-    "💱 العملات (Forex)": ["EUR/USD", "GBP/USD", "USD/JPY"],
-    "🪙 العملات الرقمية (Crypto)": ["BTC/USDT", "ETH/USDT", "BNB/USDT"],
-}
 
 # --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -208,7 +170,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
         await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
-
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -252,10 +213,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pair_name = context.user_data.get('selected_pair', 'BTC/USDT')
 
         try:
-            # جلب بيانات حقيقية بدلاً من التوليد العشوائي
             df = fetch_real_data(pair_name, tf_name, limit=150)
-
             analysis_result = analyze_market(df, pair_name, tf_name)
+            
             if analysis_result is not None and isinstance(analysis_result, tuple) and len(analysis_result) == 2:
                 signal, desc = analysis_result
             else:
@@ -268,9 +228,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                            f"{desc}")
 
         except ValueError as e:
-            # خطأ متوقع: زوج OTC، رمز غير صحيح، مفتاح API مفقود...
             result_text = f"⚠️ **تعذر التحليل**\n\n{e}"
-
         except Exception as e:
             print(f"Error in timeframe handler: {e}")
             result_text = f"⚠️ حدث خطأ غير متوقع أثناء معالجة التحليل: {e}"
@@ -282,7 +240,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
 
-
 def main():
     TOKEN = os.environ.get("BOT_TOKEN")
     if not TOKEN:
@@ -290,15 +247,11 @@ def main():
 
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # إضافة المعالجات (Handlers)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
 
     print("Bot is starting...")
-
-    # التشغيل المباشر والمستقر
     app.run_polling(drop_pending_updates=True)
-
 
 if __name__ == '__main__':
     main()
