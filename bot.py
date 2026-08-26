@@ -25,7 +25,9 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 
-# --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---CATEGORIES = {
+     # --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---
+
+    CATEGORIES = {
     "💱 العملات (Forex)": [
         "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC",
         "🇺🇦🇺🇸 UAH/USD OTC", "🇧🇩🇺🇸 USD/BDT OTC",
@@ -51,6 +53,7 @@ threading.Thread(target=run_web, daemon=True).start()
         # الأزواج السويسرية الإضافية بدقة
         "🇬🇧🇨🇭 GBP/CHF OTC", "🇦🇺🇨🇭 AUD/CHF OTC",
         "🇳🇿🇨🇭 NZD/CHF OTC"
+
     ],
     "🟡 العملات الرقمية (Crypto)": [
         "🗿 Bitcoin ETF OTC", "🥈 Litecoin OTC",
