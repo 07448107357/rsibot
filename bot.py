@@ -74,7 +74,7 @@ threading.Thread(target=run_web, daemon=True).start()
         "🏦 Citigroup OTC", "👁️ Palantir OTC",
         "🟦 Intel OTC"
     ]
-
+    }
 
 import pandas as pd
 import numpy as np
