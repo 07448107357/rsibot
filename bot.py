@@ -75,9 +75,7 @@ CATEGORIES = {
         "🏦 Citigroup OTC", "👁️ Palantir OTC",
         "🟦 Intel OTC"
     ]
-}
 
-TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 
 import pandas as pd
 import numpy as np
