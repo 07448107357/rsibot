@@ -1,4 +1,4 @@
-Import os
+import os
 import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
