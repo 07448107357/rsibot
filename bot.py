@@ -3,7 +3,7 @@ import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import pandas as pd
-from real_data_fetcher import fetch_real_data, TIMEFRAMES
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
