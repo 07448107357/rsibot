@@ -134,62 +134,74 @@ def analyze_market(df, pair_name, tf_name):
     # --- 4. نظام تصويت متعدد العوامل بدل الاعتماد على مقارنة واحدة فقط ---
     # كل عامل يصوّت +1 (صعود) أو -1 (هبوط)، فيصبح الاتجاه النهائي
     # نتيجة توافق عدة مؤشرات، ما يمنع "التحيز" الدائم لجهة واحدة.
-        # --- نظام تصويت معدل لضمان مرونة الصعود والهبوط ---
     score = 0
 
-    # (أ) السعر مقابل EMA (نعطيه وزناً أكبر قليلاً)
-    if current_price >= current_ema:
-        score += 1.5
-    else:
+    # (أ) السعر مقابل EMA
+    if current_price > current_ema:
+        score += 1
+    elif current_price < current_ema:
         score -= 1
 
-    # (ب) ميل EMA نفسه
-    if current_ema >= prev_ema:
+    # (ب) ميل EMA نفسه (هل المتوسط صاعد أم هابط؟)
+    if current_ema > prev_ema:
         score += 1
-    else:
+    elif current_ema < prev_ema:
         score -= 1
 
-    # (ج) منطقة RSI14 (جعلنا النطاق أوسع بقليل لصالح الشراء إذا لم يكن في تشبع بيعي تام)
-    if current_rsi_14 >= 50:
+    # (ج) منطقة RSI14
+    if current_rsi_14 > 55:
         score += 1
-    else:
+    elif current_rsi_14 < 45:
         score -= 1
 
-    # (د) تقاطع RSI9 مع RSI14
-    if current_rsi_9 >= current_rsi_14:
+    # (د) تقاطع RSI9 مع RSI14 (زخم قصير المدى)
+    if current_rsi_9 > current_rsi_14:
         score += 1
-    else:
+    elif current_rsi_9 < current_rsi_14:
         score -= 1
 
     # (هـ) موقع السعر داخل نطاق بولينجر
     band_width = current_upper - current_lower
     if band_width > 0:
         position_in_band = (current_price - current_lower) / band_width
-        if position_in_band >= 0.45:  # خفضنا المعيار قليلاً لسهولة الحصول على شراء
+        if position_in_band > 0.5:
             score += 1
-        else:
+        elif position_in_band < 0.5:
             score -= 1
 
-    # القرار النهائي بناءً على النتيجة المعدلة (أي قيمة أكبر من الصفر ستعطي شراء مباشرة)
+    # --- كسر التعادل: عند score == 0 لا نترك القرار معلقاً، بل نستخدم
+    # فروقاً أدق (المسافة الفعلية بين السعر والـ EMA، ثم RSI9 كحكم أخير)
+    # لإجبار القرار على CALL أو PUT دائماً ---
+    if score == 0:
+        if current_price != current_ema:
+            score = 1 if current_price > current_ema else -1
+        elif current_rsi_9 != 50.0:
+            score = 1 if current_rsi_9 > 50.0 else -1
+        else:
+            score = 1  # تعادل تام نادر جداً: نميل افتراضياً لصالح CALL
+
     if score > 0:
         signal_type = "CALL"
         action_title = "🚀 **إشارة شراء / صعود (CALL)**"
-        decision_text = f"القرار: دخول صفقة شراء (Call) — الزخم يدعم الصعود."
-        trend_desc = "المؤشرات الفنية تميل لصالح الاتجاه الصاعد."
-    elif score < 0:
+        decision_text = f"القرار: دخول صفقة شراء (Call) — قوة الإشارة: {score}/5 مؤشرات صاعدة."
+        trend_desc = "أغلب المؤشرات (الاتجاه، ميل EMA، RSI، بولينجر) تدعم الصعود."
+    else:
         signal_type = "PUT"
         action_title = "📉 **إشارة بيع / هبوط (PUT)**"
-        decision_text = f"القرار: دخول صفقة بيع (Put) — الزخم يدعم الهبوط."
-        trend_desc = "المؤشرات الفنية تميل لصالح الاتجاه الهابط."
-    else:
-        signal_type = "WAIT"
-        action_title = "⏸ **لا توجد إشارة واضحة (انتظار)**"
-        decision_text = "القرار: الانتظار — السوق في حالة تذبذب."
-        trend_desc = "تعادل في القوى بين الصعود والهبوط."
+        decision_text = f"القرار: دخول صفقة بيع (Put) — قوة الإشارة: {abs(score)}/5 مؤشرات هابطة."
+        trend_desc = "أغلب المؤشرات (الاتجاه، ميل EMA، RSI، بولينجر) تدعم الهبوط."
 
-    return signal_type, f"{action_title}\n{decision_text}\n{trend_desc}"
+    desc = (f"{action_title}\n"
+            f"• الزوج: `{pair_name}` | الفريم: `{tf_name}`\n"
+            f"• السعر الحالي: `{current_price:.4f}`\n"
+            f"• 📈 مؤشر EMA (14): `{current_ema:.4f}`\n"
+            f"• 📊 مؤشر RSI (14): `{current_rsi_14:.1f}`\n"
+            f"• 📊 مؤشر RSI (9): `{current_rsi_9:.1f}`\n"
+            f"• 🌐 الاتجاه الفني: {trend_desc}\n"
+            f"• {decision_text}")
 
-
+    return signal_type, desc
+    
         
     
 
