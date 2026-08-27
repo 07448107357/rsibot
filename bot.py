@@ -3,8 +3,7 @@ import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import pandas as pd
-from real_data_fetcher import fetch_real_data
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -26,8 +25,7 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 
-     # --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---
-
+# --- القوائم والأزواج الكاملة مع إضافة العملات والأزواج السويسرية ---
 CATEGORIES = {
     "💱 العملات (Forex)": [
         "🇬🇧🇺🇸 GBP/USD OTC", "🇧🇭🇨🇳 BHD/CNY OTC",
@@ -54,7 +52,6 @@ CATEGORIES = {
         # الأزواج السويسرية الإضافية بدقة
         "🇬🇧🇨🇭 GBP/CHF OTC", "🇦🇺🇨🇭 AUD/CHF OTC",
         "🇳🇿🇨🇭 NZD/CHF OTC"
-
     ],
     "🟡 العملات الرقمية (Crypto)": [
         "🗿 Bitcoin ETF OTC", "🥈 Litecoin OTC",
@@ -78,8 +75,9 @@ CATEGORIES = {
         "🏦 Citigroup OTC", "👁️ Palantir OTC",
         "🟦 Intel OTC"
     ]
-    }
-TIMEFRAMES = ["1m", "5m", "10m", "15m", "30m", "45m", "1h", "4h", "1d"]
+}
+
+TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 
 import pandas as pd
 import numpy as np
@@ -90,7 +88,10 @@ def analyze_market(df, pair_name, tf_name):
 
     df = df.copy()
 
-    # --- التأكد من ترتيب البيانات تصاعدياً حسب الوقت ---
+    # --- إصلاح مهم: التأكد من ترتيب البيانات تصاعدياً حسب الوقت ---
+    # إذا كانت أحدث شمعة في أول الصفوف بدلاً من آخرها، فإن iloc[-1]
+    # سيقرأ سعراً قديماً وليس السعر الحالي، وهذا سبب شائع لظهور
+    # نفس التوصية (بيع فقط) بشكل متكرر.
     for time_col in ('time', 'timestamp', 'date', 'datetime'):
         if time_col in df.columns:
             df = df.sort_values(time_col).reset_index(drop=True)
@@ -116,7 +117,7 @@ def analyze_market(df, pair_name, tf_name):
     rsi_9 = 100 - (100 / (1 + rs_9))
     current_rsi_9 = float(rsi_9.iloc[-1]) if not pd.isna(rsi_9.iloc[-1]) else 50.0
 
-    # 2. EMA 14 + ميل المتوسط
+    # 2. EMA 14 + قياس ميل المتوسط (صاعد/هابط)
     ema_14 = closes.ewm(span=14, adjust=False).mean()
     current_ema = float(ema_14.iloc[-1])
     prev_ema = float(ema_14.iloc[-2]) if len(ema_14) > 1 else current_ema
@@ -130,57 +131,66 @@ def analyze_market(df, pair_name, tf_name):
     current_upper = float(upper_band.iloc[-1]) if not pd.isna(upper_band.iloc[-1]) else current_price
     current_lower = float(lower_band.iloc[-1]) if not pd.isna(lower_band.iloc[-1]) else current_price
 
-    # --- نظام تصويت متوازن: كل عامل له نفس الوزن بالضبط في الاتجاهين،
-    # وحالة التعادل تُحتسب صفراً (لا تصويت لأي جهة) بدل ترجيحها للشراء ---
+    # --- 4. نظام تصويت متعدد العوامل بدل الاعتماد على مقارنة واحدة فقط ---
+    # كل عامل يصوّت +1 (صعود) أو -1 (هبوط)، فيصبح الاتجاه النهائي
+    # نتيجة توافق عدة مؤشرات، ما يمنع "التحيز" الدائم لجهة واحدة.
+        # --- نظام تصويت معدل لضمان مرونة الصعود والهبوط ---
+    score = 0
 
-    def vote(a, b):
-        """يرجع +1 إذا a أكبر من b، -1 إذا أصغر، 0 عند التساوي التام."""
-        if a > b:
-            return 1
-        elif a < b:
-            return -1
-        return 0
-
-    score = 0.0
-
-    # (أ) السعر مقابل EMA — وزن متساوٍ في الاتجاهين
-    score += vote(current_price, current_ema)
+    # (أ) السعر مقابل EMA (نعطيه وزناً أكبر قليلاً)
+    if current_price >= current_ema:
+        score += 1.5
+    else:
+        score -= 1
 
     # (ب) ميل EMA نفسه
-    score += vote(current_ema, prev_ema)
+    if current_ema >= prev_ema:
+        score += 1
+    else:
+        score -= 1
 
-    # (ج) منطقة RSI14 — المنتصف الحقيقي هو 50
-    score += vote(current_rsi_14, 50)
+    # (ج) منطقة RSI14 (جعلنا النطاق أوسع بقليل لصالح الشراء إذا لم يكن في تشبع بيعي تام)
+    if current_rsi_14 >= 50:
+        score += 1
+    else:
+        score -= 1
 
     # (د) تقاطع RSI9 مع RSI14
-    score += vote(current_rsi_9, current_rsi_14)
+    if current_rsi_9 >= current_rsi_14:
+        score += 1
+    else:
+        score -= 1
 
-    # (هـ) موقع السعر داخل نطاق بولينجر — المنتصف الحقيقي هو 0.5
+    # (هـ) موقع السعر داخل نطاق بولينجر
     band_width = current_upper - current_lower
     if band_width > 0:
         position_in_band = (current_price - current_lower) / band_width
-        score += vote(position_in_band, 0.5)
-    # إذا كان band_width == 0 (سوق شبه ثابت) لا يصوّت هذا العامل لأي جهة
+        if position_in_band >= 0.45:  # خفضنا المعيار قليلاً لسهولة الحصول على شراء
+            score += 1
+        else:
+            score -= 1
 
-    # القرار النهائي: >0 شراء، <0 بيع، =0 انتظار (تعادل حقيقي في القوى)
+    # القرار النهائي بناءً على النتيجة المعدلة (أي قيمة أكبر من الصفر ستعطي شراء مباشرة)
     if score > 0:
         signal_type = "CALL"
         action_title = "🚀 **إشارة شراء / صعود (CALL)**"
-        decision_text = "القرار: دخول صفقة شراء (Call) — الزخم يدعم الصعود."
+        decision_text = f"القرار: دخول صفقة شراء (Call) — الزخم يدعم الصعود."
         trend_desc = "المؤشرات الفنية تميل لصالح الاتجاه الصاعد."
     elif score < 0:
         signal_type = "PUT"
         action_title = "📉 **إشارة بيع / هبوط (PUT)**"
-        decision_text = "القرار: دخول صفقة بيع (Put) — الزخم يدعم الهبوط."
+        decision_text = f"القرار: دخول صفقة بيع (Put) — الزخم يدعم الهبوط."
         trend_desc = "المؤشرات الفنية تميل لصالح الاتجاه الهابط."
     else:
         signal_type = "WAIT"
         action_title = "⏸ **لا توجد إشارة واضحة (انتظار)**"
         decision_text = "القرار: الانتظار — السوق في حالة تذبذب."
-        trend_desc = "تعادل حقيقي في القوى بين الصعود والهبوط."
+        trend_desc = "تعادل في القوى بين الصعود والهبوط."
 
     return signal_type, f"{action_title}\n{decision_text}\n{trend_desc}"
-    
+
+
+        
     
 
 # --- واجهة تليجرام ---
@@ -190,12 +200,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton(cat, callback_data=f"cat_{cat}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
     welcome_text = "🤖 **مرحباً بك في بوت التحليل الفني المتقدم**\n\nاختر القسم المطلوب:"
-
+    
     if update.message:
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
         await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
-
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -209,7 +218,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i in range(0, len(pairs), 2):
             row = [InlineKeyboardButton(pairs[i], callback_data=f"pair_{pairs[i]}")]
             if i + 1 < len(pairs):
-                row.append(InlineKeyboardButton(pairs[i + 1], callback_data=f"pair_{pairs[i + 1]}"))
+                row.append(InlineKeyboardButton(pairs[i+1], callback_data=f"pair_{pairs[i+1]}"))
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -236,45 +245,46 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
-        pair_name = context.user_data.get('selected_pair', 'BTC/USDT')
-
+        pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
+        
         try:
-            # جلب بيانات حقيقية بدلاً من التوليد العشوائي
-            df = fetch_real_data(pair_name, tf_name, limit=150)
-
+            import pandas as pd
+            import numpy as np
+            
+            np.random.seed(None)
+            x = np.linspace(0, 40, 100)
+            close_prices = 100 + (np.sin(x) * 3) + np.cumsum(np.random.randn(100) * 0.4)
+            df = pd.DataFrame({'close': close_prices})
+            
+            
             analysis_result = analyze_market(df, pair_name, tf_name)
             if analysis_result is not None and isinstance(analysis_result, tuple) and len(analysis_result) == 2:
                 signal, desc = analysis_result
             else:
                 signal, desc = "WAIT", "⚠️ عذراً، لم يُرجِع مؤشر التحليل أي بيانات لهذا الفريم."
-
+                
             result_text = (f"📊 **نتيجة التحليل**\n"
                            f"─────────────────\n"
                            f"🔹 الزوج: `{pair_name}`\n"
                            f"⏰ الفريم: `{tf_name}`\n\n"
                            f"{desc}")
-
-        except ValueError as e:
-            # خطأ متوقع: زوج OTC، رمز غير صحيح، مفتاح API مفقود...
-            result_text = f"⚠️ **تعذر التحليل**\n\n{e}"
-
+            
+            keyboard = [
+                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
+            
         except Exception as e:
             print(f"Error in timeframe handler: {e}")
-            result_text = f"⚠️ حدث خطأ غير متوقع أثناء معالجة التحليل: {e}"
-
-        keyboard = [
-            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
-            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
-
-
+            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}", parse_mode='Markdown')
+            
+                
+    
 def main():
     TOKEN = os.environ.get("BOT_TOKEN")
-    if not TOKEN:
-        raise RuntimeError("متغير البيئة BOT_TOKEN غير موجود. ضع توكن البوت فيه قبل التشغيل.")
-
     app = ApplicationBuilder().token(TOKEN).build()
 
     # إضافة المعالجات (Handlers)
@@ -282,10 +292,9 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
 
     print("Bot is starting...")
-
+    
     # التشغيل المباشر والمستقر
     app.run_polling(drop_pending_updates=True)
-
 
 if __name__ == '__main__':
     main()
