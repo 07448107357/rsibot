@@ -78,6 +78,7 @@ CATEGORIES = {
         "🟦 Intel OTC"
     ]
     }
+TIMEFRAMES = ["1m", "5m", "10m", "15m", "30m", "45m", "1h", "4h", "1d"]
 
 import pandas as pd
 import numpy as np
