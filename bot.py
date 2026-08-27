@@ -188,7 +188,6 @@ def analyze_market(df, pair_name, tf_name):
     from real_data_fetcher import fetch_real_data, TIMEFRAMES
     # analyze_market: انسخ الدالة المصححة (analyze_market_fixed.py) في نفس الملف أو استوردها من ملف منفصل
     # from analyze_market_fixed import analyze_market
-}
 
 # --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
