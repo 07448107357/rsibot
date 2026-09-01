@@ -174,8 +174,7 @@ def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
         f"• EMA14: `{current_ema:.5f}` | RSI14: `{current_rsi_14:.1f}` | RSI9: `{current_rsi_9:.1f}`\n"
         f"• قوة الإشارة: {abs(score)}/5"
     )
-    
-    
+
 
 def get_signal(name, timeframe="15m"):
     df, err = fetch_data(name, timeframe)
@@ -277,24 +276,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{disclaimer}"
         )
         await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown")
-        
-                
-    
+
+
 def main():
     TOKEN = os.environ.get("BOT_TOKEN")
     app = ApplicationBuilder().token(TOKEN).build()
 
-    # إضافة المعالجات (Handlers)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
 
     print("Bot is starting...")
-    
-    # التشغيل المباشر والمستقر
     app.run_polling(drop_pending_updates=True)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
+        
+                
+    
+
     
 
     
