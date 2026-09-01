@@ -187,11 +187,15 @@ def get_signal(name, timeframe="15m"):
     if err and err.startswith("error:"):
         return {"error": f"خطأ في جلب البيانات: {err}"}
     return analyze_market(df, name, timeframe)
-
-
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
+
+CATEGORY_LABELS = {
+    "forex": "💱 العملات (Forex)",
+    "crypto": "🪙 العملات الرقمية (Crypto)",
+    "stocks": "📈 الأسهم والشركات (Stocks)"
+}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
@@ -276,32 +280,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{disclaimer}"
         )
         
-        # تم إزالة parse_mode="Markdown" لمنع حدوث خطأ تنسيق التيليجرام وتوقف البوت
         await query.message.edit_text(
             result_text, 
             reply_markup=InlineKeyboardMarkup(back_keyboard)
         )
-    
-
-        await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
-        result = get_signal(symbol_name, tf_name)
-
-        if "error" in result:
-            await query.message.edit_text(f"⚠️ {result['error']}", reply_markup=InlineKeyboardMarkup(back_keyboard))
-            return
-
-        disclaimer = (
-            "\n\nℹ️ *ملاحظة:* هذا تحليل فني آلي وليس نصيحة استثمارية أو ضماناً للربح. "
-            "الأسواق المالية والعملات الرقمية والخيارات الثنائية تحمل مخاطرة عالية. "
-            "اختبر الإشارات على حساب تجريبي قبل أي استخدام فعلي."
-        )
-        result_text = (
-            f"📊 **نتيجة التحليل**\n"
-            f"─────────────────\n"
-            f"{result['desc']}"
-            f"{disclaimer}"
-        )
-        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown")
 
 
 def main():
@@ -316,7 +298,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()           
+    main()
+    
+         
     
 
     
