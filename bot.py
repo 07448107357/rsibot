@@ -190,12 +190,24 @@ def get_signal(name, timeframe="15m"):
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
-
-CATEGORY_LABELS = {
-    "forex": "💱 العملات (Forex)",
-    "crypto": "🪙 العملات الرقمية (Crypto)",
-    "stocks": "📈 الأسهم والشركات (Stocks)"
+ALL_MARKETS = {
+    "forex": {
+        "EUR/USD": "EURUSD",
+        "GBP/USD": "GBPUSD",
+        "USD/JPY": "USDJPY",
+        "EUR/GBP": "EURGBP",
+        "AUD/CAD": "AUDCAD"
+    },
+    "crypto": {
+        "BTC/USD": "BTCUSD",
+        "ETH/USD": "ETHUSD"
+    },
+    "stocks": {
+        "GOLD (XAU/USD)": "XAUUSD"
+    }
 }
+
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
