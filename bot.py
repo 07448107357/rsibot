@@ -190,33 +190,12 @@ def get_signal(name, timeframe="15m"):
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
-# =====================================================================
-# الثوابت والقواميس الأساسية
-# =====================================================================
 
 CATEGORY_LABELS = {
     "forex": "💱 العملات (Forex)",
     "crypto": "🪙 العملات الرقمية (Crypto)",
     "stocks": "📈 الأسهم والشركات (Stocks)"
 }
-
-ALL_MARKETS = {
-    "forex": {
-        "EUR/USD": "EURUSD",
-        "GBP/USD": "GBPUSD",
-        "USD/JPY": "USDJPY",
-        "EUR/GBP": "EURGBP",
-        "AUD/CAD": "AUDCAD"
-    },
-    "crypto": {
-        "BTC/USD": "BTCUSD",
-        "ETH/USD": "ETHUSD"
-    },
-    "stocks": {
-        "GOLD (XAU/USD)": "XAUUSD"
-    }
-}
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
@@ -237,7 +216,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data.startswith("cat_"):
         market_key = data.replace("cat_", "")
-        symbols = list(ALL_MARKETS.get(market_key, {}).keys())
+        # استخدام CATEGORIES مباشرة لأنها مخزنة كقوائم
+        symbols = CATEGORIES.get(market_key, [])
         context.user_data["current_market"] = market_key
 
         keyboard = []
