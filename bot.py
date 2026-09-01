@@ -177,7 +177,7 @@ def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
     
     
 
- def get_signal(name, timeframe="15m"):
+def get_signal(name, timeframe="15m"):
     df, err = fetch_data(name, timeframe)
     if err == "unsupported_symbol":
         return {"error": f"الأصل '{name}' غير موجود في القوائم المدعومة."}
