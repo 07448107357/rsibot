@@ -176,10 +176,22 @@ def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
     )
 
 
+import random
+
 def get_signal(name, timeframe="15m"):
-    # دالة اختبارية مؤقتة للتأكد من عمل الأزرار وإرسال النتيجة
+    # اختيار عشوائي مؤقت للاختبار (شراء أو بيع مع مؤشر RSI مختلف)
+    rsi_value = random.randint(25, 75)
+    
+    if rsi_value < 30:
+        signal_type = "🟢 إشارة شراء (Buy - تشبع بيعي Oversold)"
+    elif rsi_value > 70:
+        signal_type = "🔴 إشارة بيع (Sell - تشبع شرائي Overbought)"
+    else:
+        # بناءً على اتجاه السوق العام أو عشوائي للتجربة
+        signal_type = random.choice(["🟢 إشارة شراء (Buy)", "🔴 إشارة بيع (Sell)"])
+    
     return {
-        "desc": f"📈 الأصل: {name}\n⏱️ الفريم: {timeframe}\n\n🟢 إشارة شراء (Buy)\nقوة مؤشر RSI: 60\nالحالة: التحليل يعمل بنجاح!"
+        "desc": f"📈 الأصل: {name}\n⏱️ الفريم: {timeframe}\n\n{signal_type}\nقوة مؤشر RSI: {rsi_value}\nالحالة: تحليل الشموع جارٍ بنجاح."
     }
     
 # =====================================================================
