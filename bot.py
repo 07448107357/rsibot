@@ -82,62 +82,6 @@ TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 import pandas as pd
 import numpy as np
 
-def resolve_symbol(name):
-    for market_type, table in ALL_MARKETS.items():
-        if name in table:
-            return table[name], market_type
-    return None, None
-
-
-def fetch_data(name, timeframe):
-    ticker, _ = resolve_symbol(name)
-    if not ticker:
-        return None, "unsupported_symbol"
-    if timeframe not in TIMEFRAME_MAP:
-        return None, "unsupported_timeframe"
-
-    interval, period = TIMEFRAME_MAP[timeframe]
-    try:
-        raw = yf.download(ticker, period=period, interval=interval,
-                           progress=False, auto_adjust=False)
-        if raw is None or raw.empty:
-            return None, "no_data"
-
-        df = raw.reset_index()
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [c[0] for c in df.columns]
-        df = df.rename(columns={
-            "Open": "open", "High": "high", "Low": "low",
-            "Close": "close", "Volume": "volume",
-        })
-        if not {"open", "high", "low", "close"}.issubset(df.columns):
-            return None, "no_data"
-
-        if timeframe == "4h":
-            time_col = "Datetime" if "Datetime" in df.columns else "Date"
-            df = df.set_index(pd.to_datetime(df[time_col]))
-            df = df.resample("4H").agg({
-                "open": "first", "high": "max", "low": "min", "close": "last",
-            }).dropna().reset_index()
-
-        return df, None
-    except Exception as e:  # noqa: BLE001
-        return None, f"error:{e}"
-
-
-def compute_atr(df, period=14):
-    high = pd.to_numeric(df["high"], errors="coerce")
-    low = pd.to_numeric(df["low"], errors="coerce")
-    close = pd.to_numeric(df["close"], errors="coerce")
-    prev_close = close.shift(1)
-    tr = pd.concat([
-        high - low,
-        (high - prev_close).abs(),
-        (low - prev_close).abs(),
-    ], axis=1).max(axis=1)
-    return tr.rolling(window=period).mean()
-
-
 def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
     df = df.copy()
     closes = pd.to_numeric(df["close"], errors="coerce")
