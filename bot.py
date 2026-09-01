@@ -248,7 +248,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
                                        reply_markup=reply_markup, parse_mode="Markdown")
 
-    elif data.startswith("tf_"):
+        elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         symbol_name = context.user_data.get("selected_symbol", "EUR/USD")
 
@@ -256,6 +256,32 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"sym_{symbol_name}")],
             [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")],
         ]
+
+        await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
+        result = get_signal(symbol_name, tf_name)
+
+        if "error" in result:
+            await query.message.edit_text(f"⚠️ {result['error']}", reply_markup=InlineKeyboardMarkup(back_keyboard))
+            return
+
+        disclaimer = (
+            "\n\nℹ️ ملاحظة: هذا تحليل فني آلي وليس نصيحة استثمارية أو ضماناً للربح. "
+            "الأسواق المالية والعملات الرقمية والخيارات الثنائية تحمل مخاطرة عالية. "
+            "اختبر الإشارات على حساب تجريبي قبل أي استخدام فعلي."
+        )
+        result_text = (
+            f"📊 نتيجة التحليل\n"
+            f"─────────────────\n"
+            f"{result.get('desc', '')}"
+            f"{disclaimer}"
+        )
+        
+        # تم إزالة parse_mode="Markdown" لمنع حدوث خطأ تنسيق التيليجرام وتوقف البوت
+        await query.message.edit_text(
+            result_text, 
+            reply_markup=InlineKeyboardMarkup(back_keyboard)
+        )
+    
 
         await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
         result = get_signal(symbol_name, tf_name)
