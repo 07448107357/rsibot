@@ -229,8 +229,8 @@ def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
         f"• نسبة المخاطرة:العائد ≈ 1:{rr_ratio}\n"
         f"• EMA14: `{current_ema:.5f}` | RSI14: `{current_rsi_14:.1f}` | RSI9: `{current_rsi_9:.1f}`\n"
         f"• قوة الإشارة: {abs(score)}/5"
+    )
     
-        
     
 
 # --- واجهة تليجرام ---
