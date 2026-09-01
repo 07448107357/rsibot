@@ -177,6 +177,19 @@ def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
     
     
 
+ def get_signal(name, timeframe="15m"):
+    df, err = fetch_data(name, timeframe)
+    if err == "unsupported_symbol":
+        return {"error": f"الأصل '{name}' غير موجود في القوائم المدعومة."}
+    if err == "unsupported_timeframe":
+        return {"error": f"الفريم '{timeframe}' غير مدعوم."}
+    if err == "no_data":
+        return {"error": "لا توجد بيانات متاحة حالياً (قد يكون السوق مغلقاً)."}
+    if err and err.startswith("error:"):
+        return {"error": f"خطأ في جلب البيانات: {err}"}
+    return analyze_market(df, name, timeframe)
+
+
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
@@ -263,7 +276,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{result['desc']}"
             f"{disclaimer}"
         )
-        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown")    
+        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown")
+        
                 
     
 def main():
