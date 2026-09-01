@@ -248,7 +248,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
                                        reply_markup=reply_markup, parse_mode="Markdown")
 
-        elif data.startswith("tf_"):
+    elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         symbol_name = context.user_data.get("selected_symbol", "EUR/USD")
 
