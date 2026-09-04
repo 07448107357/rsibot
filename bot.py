@@ -176,53 +176,134 @@ def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
     )
 
 
-import pandas as pd
-import numpy as np
+# ==========================================================
+# القسم 2: حساب المؤشرات الفنية (RSI, EMA, MACD)
+# ==========================================================
+def calculate_rsi(df: pd.DataFrame, period: int = 14) -> float:
+    """RSI بمعادلة Wilder القياسية."""
+    delta = df["close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -1 * delta.clip(upper=0)
+    avg_gain = gain.rolling(window=period).mean()
+    avg_loss = loss.rolling(window=period).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return round(float(rsi.iloc[-1]), 2)
+def calculate_ema(df: pd.DataFrame, period: int) -> float:
+    """المتوسط المتحرك الأسي (EMA) لآخر قيمة."""
+    ema = df["close"].ewm(span=period, adjust=False).mean()
+    return round(float(ema.iloc[-1]), 4)
+def calculate_macd(df: pd.DataFrame, fast=12, slow=26, signal=9):
+    """
+    MACD القياسي:
+    - خط MACD = EMA(fast) - EMA(slow)
+    - خط الإشارة = EMA(signal) لخط MACD
+    - الهيستوغرام = MACD - خط الإشارة
+    يُرجع القيم الحالية الثلاث + هل تقاطع صعوديًا أو هبوطيًا في آخر شمعتين.
+    """
+    ema_fast = df["close"].ewm(span=fast, adjust=False).mean()
+    ema_slow = df["close"].ewm(span=slow, adjust=False).mean()
+    macd_line = ema_fast - ema_slow
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    histogram = macd_line - signal_line
+    current_macd = round(float(macd_line.iloc[-1]), 4)
+    current_signal = round(float(signal_line.iloc[-1]), 4)
+    current_hist = round(float(histogram.iloc[-1]), 4)
+    prev_hist = float(histogram.iloc[-2])
+    if prev_hist <= 0 < current_hist:
+        cross = "bullish_cross"
+    elif prev_hist >= 0 > current_hist:
+        cross = "bearish_cross"
+    else:
+        cross = "none"
+    return {
+        "macd": current_macd,
+        "signal": current_signal,
+        "histogram": current_hist,
+        "cross": cross,
+    }
+def build_recommendation(rsi: float, macd_data: dict, ema_fast: float, ema_slow: float) -> str:
+    """
+    يجمع الإشارات الثلاث في توصية نصية بسيطة. هذا منطق ترجيح بسيط لأغراض
+    العرض، وليس نظام تداول متكامل — الإشارات الثلاث قد تتعارض أحيانًا.
+    """
+    votes = []
 
-def get_signal(name, timeframe="15m"):
+    if rsi <= 30:
+        votes.append("buy")
+    elif rsi >= 70:
+        votes.append("sell")
+
+    if macd_data["cross"] == "bullish_cross" or macd_data["histogram"] > 0:
+        votes.append("buy")
+    elif macd_data["cross"] == "bearish_cross" or macd_data["histogram"] < 0:
+        votes.append("sell")
+
+    votes.append("buy" if ema_fast > ema_slow else "sell")
+
+    buy_votes = votes.count("buy")
+    sell_votes = votes.count("sell")
+
+    if buy_votes > sell_votes:
+        return "🟢 الاتجاه العام للمؤشرات: ميل شرائي"
+    elif sell_votes > buy_votes:
+        return "🔴 الاتجاه العام للمؤشرات: ميل بيعي"
+    else:
+        return "⚪ الاتجاه العام للمؤشرات: متضارب / محايد"
+  # ==========================================================
+# القسم 3: تجميع كل شيء في إشارة واحدة جاهزة للعرض
+# ==========================================================
+def get_signal(name: str, timeframe: str = "15m") -> dict:
+    """
+    name: رمز التداول على Binance، مثل 'BTCUSDT' أو 'ETHUSDT'
+    timeframe: أحد القيم في TIMEFRAME_MAP
+    يُرجع dict فيه "desc" (نص جاهز للعرض) أو "error".
+    """
     try:
-        # 1. جلب أو محاكاة بيانات الشموع التاريخية للأصل (يمكن ربطها بمنصتك لاحقاً)
-        data_points = 50
-        np.random.seed() # لتوليد حركة واقعية ومتغيرة مع كل طلب
-        prices = 100 + np.cumsum(np.random.normal(0, 1, data_points))
-        df = pd.DataFrame({"close": prices})
-
-        if len(df) < 15:
-            return {"error": "بيانات غير كافية لحساب المؤشر."}
-
-        # 2. الحساب الرياضي الحقيقي لمؤشر RSI (معادلة Wilder القياسية)
-        delta = df['close'].diff()
-        gain = delta.clip(lower=0)
-        loss = -1 * delta.clip(upper=0)
-        
-        avg_gain = gain.rolling(window=14).mean()
-        avg_loss = loss.rolling(window=14).mean()
-        
-        rs = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + rs))
-        current_rsi = round(float(rsi.iloc[-1]), 2)
-
-        # 3. تحديد الإشارة بناءً على القواعد الفنية البحتة (بدون عشوائية)
-        # إذا كان مؤشر RSI أقل من أو يساوي 45، فهذا يشير إلى ضغط بيعي وفرصة ارتداد (شراء)
-        # إذا كان مؤشر RSI أكبر من أو يساوي 55، فهذا يشير إلى ضغط شرائي وفرصة هبوط (بيع)
-        if current_rsi <= 45:
-            signal_type = "🟢 إشارة شراء (Buy) - ارتداد من مناطق دعم/تشبع"
-        else:
-            signal_type = "🔴 إشارة بيع (Sell) - ارتداد من مناطق مقاومة/تشبع"
-
-        # 4. تجهيز النص للتيليجرام
+        symbol = name.replace("/", "").replace("-", "").upper()
+        df = fetch_binance_klines(symbol, timeframe, limit=200)
+        if len(df) < 35:
+            return {"error": "بيانات غير كافية لحساب المؤشرات (خصوصًا MACD)."}
+        current_rsi = calculate_rsi(df, period=14)
+        ema_fast = calculate_ema(df, period=9)
+        ema_slow = calculate_ema(df, period=21)
+        macd_data = calculate_macd(df)
+        last_price = float(df["close"].iloc[-1])
+        overall = build_recommendation(current_rsi, macd_data, ema_fast, ema_slow)
+        cross_text = {
+            "bullish_cross": "↗️ تقاطع صعودي جديد",
+            "bearish_cross": "↘️ تقاطع هبوطي جديد",
+            "none": "بدون تقاطع جديد",
+        }[macd_data["cross"]]
         desc = (
-            f"📈 الأصل: {name}\n"
-            f"⏱️ الفريم: {timeframe}\n\n"
-            f"{signal_type}\n"
-            f"📊 قيمة مؤشر RSI الحقيقية: {current_rsi}\n"
-            f"الحالة: تحليل فني دقيق بناءً على إغلاقات الشموع."
+            f"📈 الأصل: {symbol}\n"
+            f"⏱️ الفريم: {timeframe}\n"
+            f"💰 آخر سعر إغلاق: {last_price}\n\n"
+            f"— RSI (14): {current_rsi}\n"
+            f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
+            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n"
+            f"— MACD: {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
+            f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
+            f"{overall}\n\n"
+            f"⚠️ تنويه: هذا تحليل آلي لثلاثة مؤشرات فنية شائعة (RSI, EMA, MACD)، "
+            f"وليس توصية استثمارية. التداول ينطوي على مخاطر، والمؤشرات الفنية "
+            f"قد تتعارض أو تتأخر عن حركة السعر الفعلية."
         )
-        return {"desc": desc}
+        return {
+            "desc": desc,
+            "rsi": current_rsi,
+            "ema_fast": ema_fast,
+            "ema_slow": ema_slow,
+            "macd": macd_data,
+            "price": last_price,
+        }
 
+    except requests.exceptions.HTTPError as e:
+        return {"error": f"رمز غير صحيح أو خطأ من Binance: {str(e)}"}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"تعذر الاتصال بـ Binance: {str(e)}"}
     except Exception as e:
-        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
-        
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}      
     
 # =====================================================================
 # واجهة تليجرام
