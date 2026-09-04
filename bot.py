@@ -259,7 +259,7 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
 df = fetch_forex_klines(symbol, timeframe, size=200)
 if len(df) < MIN_CANDLES_REQUIRED:
     دالة جلب البيانات لتفادي خطأ عدم التعريف
-    """
+    
     try:
         data_points = 50
         np.random.seed()
