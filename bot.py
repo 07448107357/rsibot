@@ -1,3 +1,4 @@
+import requests
 import os
 import random
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -255,7 +256,6 @@ def build_recommendation(rsi: float, macd_data: dict, ema_fast: float, ema_slow:
 # ==========================================================
 def get_signal(name: str, timeframe: str = "15m") -> dict:
     """
-    name: رمز التداول على Binance، مثل 'BTCUSDT' أو 'ETHUSDT'
     timeframe: أحد القيم في TIMEFRAME_MAP
     يُرجع dict فيه "desc" (نص جاهز للعرض) أو "error".
     """
