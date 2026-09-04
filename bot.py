@@ -206,7 +206,7 @@ def build_recommendation(rsi: float, macd_data: dict, ema_fast: float, ema_slow:
 # القسم 3: تجميع كل شيء في إشارة واحدة جاهزة للعرض
 # ==========================================================
 def get_signal(name: str, timeframe: str = "15m") -> dict:
-    """
+    
     timeframe: أحد القيم في TIMEFRAME_MAP
     يُرجع dict فيه "desc" (نص جاهز للعرض) أو "error".
     try:
