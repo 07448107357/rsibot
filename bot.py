@@ -93,7 +93,7 @@ import numpy as np
 # القسم 3: الدالة الرئيسية analyze_market
 # ==========================================================
 def analyze_market(name: str, timeframe: str = "15m") -> dict:
-    name: زوج فوركس بصيغة Twelve Data، مثل 'EUR/USD' أو 'GBP/USD' أو 'USD/JPY'
+    name: زوج فوركس بصيغة Twelve Data, مثل 'EUR/USD' أو 'GBP/USD' أو 'USD/JPY'
     timeframe: أحد القيم في TIMEFRAME_MAP
     try:
         if timeframe not in TIMEFRAME_MAP:
