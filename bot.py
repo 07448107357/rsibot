@@ -89,98 +89,61 @@ TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 import pandas as pd
 import numpy as np
 
-def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
-    df = df.copy()
-    closes = pd.to_numeric(df["close"], errors="coerce")
-    if closes.isna().all():
-        raise ValueError("لا توجد بيانات أسعار صالحة")
+# ==========================================================
+# القسم 3: الدالة الرئيسية analyze_market
+# ==========================================================
+def analyze_market(name: str, timeframe: str = "15m") -> dict:
+    """
+    name: زوج فوركس بصيغة Twelve Data، مثل 'EUR/USD' أو 'GBP/USD' أو 'USD/JPY'
+    timeframe: أحد القيم في TIMEFRAME_MAP
+    """
+    try:
+        if timeframe not in TIMEFRAME_MAP:
+            return {"error": f"فريم غير مدعوم: {timeframe}. الفريمات المتاحة: {', '.join(TIMEFRAME_MAP.keys())}"}
+        symbol = name.upper().replace("-", "/")
+        if "/" not in symbol:
+            return {"error": "صيغة الرمز غير صحيحة. استخدم مثل: EUR/USD أو GBP/USD"}
+        df = fetch_forex_klines(symbol, timeframe, size=200)
+        if len(df) < MIN_CANDLES_REQUIRED:
+            return {"error": f"بيانات غير كافية ({len(df)} شمعة فقط) لحساب المؤشرات بدقة."}
+        current_rsi = calculate_rsi(df, period=14)
+        ema_fast = calculate_ema(df, period=9)
+        ema_slow = calculate_ema(df, period=21)
+        macd_data = calculate_macd(df)
+        last_price = float(df["close"].iloc[-1])
+        overall = build_recommendation(current_rsi, macd_data, ema_fast, ema_slow)
+        cross_text = {
+            "bullish_cross": "↗️ تقاطع صعودي جديد",
+            "bearish_cross": "↘️ تقاطع هبوطي جديد",
+            "none": "بدون تقاطع جديد",
+        }[macd_data["cross"]]
+        desc = (
+            f"📈 الزوج: {symbol}\n"
+            f"⏱️ الفريم: {timeframe}\n"
+            f"💰 آخر سعر: {last_price}\n\n"
+            f"— RSI (14): {current_rsi}\n"
+            f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
+            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n"
+            f"— MACD: {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
+            f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
+            f"{overall}\n\n"
+            f"⚠️ تنويه: تحليل آلي لثلاثة مؤشرات فنية (RSI, EMA, MACD)، وليس "
+            f"توصية استثمارية. تداول الفوركس بالرافعة المالية ينطوي على "
+            f"مخاطر عالية."
+        )
+        return {
+            "desc": desc, "rsi": current_rsi, "ema_fast": ema_fast,
+            "ema_slow": ema_slow, "macd": macd_data, "price": last_price,
+        }
 
-    current_price = float(closes.iloc[-1])
-
-    delta = closes.diff()
-    gain_14 = delta.where(delta > 0, 0).rolling(window=14).mean()
-    loss_14 = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rsi_14 = 100 - (100 / (1 + gain_14 / loss_14.replace(0, np.nan)))
-    current_rsi_14 = float(rsi_14.iloc[-1]) if not pd.isna(rsi_14.iloc[-1]) else 50.0
-
-    gain_9 = delta.where(delta > 0, 0).rolling(window=9).mean()
-    loss_9 = (-delta.where(delta < 0, 0)).rolling(window=9).mean()
-    rsi_9 = 100 - (100 / (1 + gain_9 / loss_9.replace(0, np.nan)))
-    current_rsi_9 = float(rsi_9.iloc[-1]) if not pd.isna(rsi_9.iloc[-1]) else 50.0
-
-    ema_14 = closes.ewm(span=14, adjust=False).mean()
-    current_ema = float(ema_14.iloc[-1])
-    prev_ema = float(ema_14.iloc[-2]) if len(ema_14) > 1 else current_ema
-
-    sma20 = closes.rolling(window=20).mean()
-    std20 = closes.rolling(window=20).std()
-    upper_band = sma20 + std20 * 2
-    lower_band = sma20 - std20 * 2
-    current_upper = float(upper_band.iloc[-1]) if not pd.isna(upper_band.iloc[-1]) else current_price
-    current_lower = float(lower_band.iloc[-1]) if not pd.isna(lower_band.iloc[-1]) else current_price
-
-    atr_series = compute_atr(df)
-    current_atr = float(atr_series.iloc[-1]) if not pd.isna(atr_series.iloc[-1]) else (current_price * 0.005)
-    if current_atr <= 0:
-        current_atr = current_price * 0.005
-
-    score = 0
-    if current_price > current_ema:
-        score += 1
-    elif current_price < current_ema:
-        score -= 1
-
-    if current_ema > prev_ema:
-        score += 1
-    elif current_ema < prev_ema:
-        score -= 1
-
-    if current_rsi_14 > 55:
-        score += 1
-    elif current_rsi_14 < 45:
-        score -= 1
-
-    if current_rsi_9 > current_rsi_14:
-        score += 1
-    elif current_rsi_9 < current_rsi_14:
-        score -= 1
-
-    band_width = current_upper - current_lower
-    if band_width > 0:
-        pos = (current_price - current_lower) / band_width
-        if pos > 0.5:
-            score += 1
-        elif pos < 0.5:
-            score -= 1
-
-    if score == 0:
-        score = 1 if current_price >= current_ema else -1
-
-    if score > 0:
-        signal = "CALL"
-        sl = current_price - (current_atr * sl_atr_mult)
-        tp = current_price + (current_atr * tp_atr_mult)
-        title = "🚀 إشارة شراء (CALL)"
-    else:
-        signal = "PUT"
-        sl = current_price + (current_atr * sl_atr_mult)
-        tp = current_price - (current_atr * tp_atr_mult)
-        title = "📉 إشارة بيع (PUT)"
-
-    risk = abs(current_price - sl)
-    reward = abs(tp - current_price)
-    rr_ratio = round(reward / risk, 2) if risk > 0 else None
-
-    desc = (
-        f"{title}\n"
-        f"• الأصل: `{name}` | الفريم: `{timeframe}`\n"
-        f"• سعر الدخول: `{current_price:.5f}`\n"
-        f"• 🛑 وقف الخسارة (SL): `{sl:.5f}`\n"
-        f"• 🎯 جني الأرباح (TP): `{tp:.5f}`\n"
-        f"• نسبة المخاطرة:العائد ≈ 1:{rr_ratio}\n"
-        f"• EMA14: `{current_ema:.5f}` | RSI14: `{current_rsi_14:.1f}` | RSI9: `{current_rsi_9:.1f}`\n"
-        f"• قوة الإشارة: {abs(score)}/5"
-    )
+    except requests.exceptions.RequestException as e:
+        return {"error": f"تعذر الاتصال بمزود البيانات: {str(e)}"}
+    except ValueError as e:
+        return {"error": str(e)}
+    except RuntimeError as e:
+        return {"error": str(e)}
+    except Exception as e:
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
 
 # ==========================================================
