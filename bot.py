@@ -209,7 +209,6 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
     """
     timeframe: أحد القيم في TIMEFRAME_MAP
     يُرجع dict فيه "desc" (نص جاهز للعرض) أو "error".
-    """
     try:
         symbol = name.replace("/", "").replace("-", "").upper()
         df = fetch_binance_klines(symbol, timeframe, limit=200)
