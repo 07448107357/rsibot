@@ -204,7 +204,7 @@ def build_recommendation(rsi: float, macd_data: dict, ema_fast: float, ema_slow:
 # ==========================================================
 def get_signal(name: str, timeframe: str = "15m") -> dict:
     
-    timeframe: أحد القيم في TIMEFRAME_MAP
+    timeframe: TIMEFRAME_MAP
     يُرجع dict فيه "desc" (نص جاهز للعرض) أو "error".
     try:
         symbol = name.replace("/", "").replace("-", "").upper()
