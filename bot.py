@@ -495,9 +495,6 @@ async def get_and_send_rsi(query, symbol, market_name):
             signal = "منطقة تشبع بيعي - فرصة شراء (Buy) 🟢"
         elif current_rsi > 70:
             signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
-        else:
-            
-
         result_text = (
             f"📊 **نتيجة التحليل الفني ({market_name})**\n"
             f"-----------------------------------\n"
