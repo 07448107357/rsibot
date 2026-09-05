@@ -134,7 +134,7 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
     
-  def get_signal(name: str, timeframe: str = "15m") -> dict:
+def get_signal(name: str, timeframe: str = "15m") -> dict:
     try:
         symbol = name.replace("/", "").replace("-", "").upper()
         df = fetch_binance_klines(symbol, timeframe, limit=200)
