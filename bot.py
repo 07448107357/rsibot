@@ -259,8 +259,8 @@ if len(df) < MIN_CANDLES_REQUIRED:
         np.random.seed()
         prices = 100 + np.cumsum(np.random.normal(0, 1, data_points))
         df = pd.DataFrame({"close": prices})
-    return df, None
-    except Exception as e:
+     return df, None
+     except Exception as e:
         return None, f"error: {str(e)}"
         
 
