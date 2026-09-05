@@ -473,10 +473,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
     
-    # هنا يتم تحديد الأكشن بناءً على زر الضغط (مثلاً الفريمات الزمنية أو أسواق التداول)
+    # إذا كان الزر خاص بالتحديث (refresh)
     if data == "refresh":
         new_text = "🔄 جاري تحديث البيانات والتحليل بناءً على مؤشر RSI..."
-        new_reply_markup = query.message.reply_markup # أو القائمة الجديدة ال
+        new_reply_markup = query.message.reply_markup
+        
+        try:
+            await query.edit_message_text(text=new_text, reply_markup=new_reply_markup)
+        except BadRequest as e:
+            if "Message is not modified" in str(e):
+                pass
+            else:
+                raise e
+                
+    # إذا كان الزر اختيار سوق (عملات، عملات رقمية، أسهم)
     else:
         clean_data = data.replace("cat_", "").replace("_", " ")
         
@@ -491,24 +501,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             symbol = "AAPL"
             market_name = "الأسهم (Stocks)"
 
-        await query.edit_message_text(text=f"📊 تم اختيار: {clean_data}\nجاري جلب البيانات وحساب مؤشر RSI...")
+        # إظهار رسالة جاري التحميل مؤقتاً
+        try:
+            await query.edit_message_text(text=f"📊 تم اختيار: {clean_data}\nجاري جلب البيانات وحساب مؤشر RSI...")
+        except BadRequest as e:
+            if "Message is not modified" not in str(e):
+                raise e
         
-        # استدعاء دالة الجلب والحساب
+        # استدعاء دالة الجلب والحساب وعرض النتيجة النهائية
         await get_and_send_rsi(query, symbol, market_name)
         
-    try:
-        # محاولة تعديل الرسالة الحالية
-        if new_reply_markup:
-            await query.edit_message_text(text=new_text, reply_markup=new_reply_markup)
-        else:
-            await query.edit_message_text(text=new_text)
-            
-    except BadRequest as e:
-        # تجاهل خطأ تطابق النص القديم مع الجديد تماماً لكي لا يتوقف البوت
-        if "Message is not modified" in str(e):
-            pass
-        else:
-            raise e
             
 
 def main():
