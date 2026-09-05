@@ -476,13 +476,27 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # هنا يتم تحديد الأكشن بناءً على زر الضغط (مثلاً الفريمات الزمنية أو أسواق التداول)
     if data == "refresh":
         new_text = "🔄 جاري تحديث البيانات والتحليل بناءً على مؤشر RSI..."
-        new_reply_markup = query.message.reply_markup # أو القائمة الجديدة المن
+      new_reply_markup = query.message.reply_markup # أو القائمة الجديدة ال
     else:
-        # تنظيف البيانات وإزالة أي بادئة مثل cat_ إن وجدت لتحسين شكل النص
         clean_data = data.replace("cat_", "").replace("_", " ")
-        new_text = f"📊 تم اختيار: {clean_data}\nجاري حساب مؤشر RSI..."
-        new_reply_markup = None
-    try:
+        
+        # تحديد رمز الأصل المالي بناءً على اختيار المستخدم
+        if "Forex" in data or "العملات" in data:
+            symbol = "EURUSD=X"
+            market_name = "العملات (Forex)"
+        elif "Crypto" in data or "الرقمية" in data:
+            symbol = "BTC-USD"
+            market_name = "العملات الرقمية (Crypto)"
+        else:
+            symbol = "AAPL"
+            market_name = "الأسهم (Stocks)"
+
+        await query.edit_message_text(text=f"📊 تم اختيار: {clean_data}\nجاري جلب البيانات وحساب مؤشر RSI...")
+        
+        # استدعاء دالة الجلب والحساب
+        await get_and_send_rsi(query, symbol, market_name)
+        
+try:
         # محاولة تعديل الرسالة الحالية
         if new_reply_markup:
             await query.edit_message_text(text=new_text, reply_markup=new_reply_markup)
