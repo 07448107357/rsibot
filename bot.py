@@ -121,10 +121,10 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
             f"— RSI (14): {current_rsi}\n"
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
             f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n"
-            f"— : {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
+            f"— RSI: {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
             f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: تحليل آلي لثلاثة مؤشرات فنية (RSI, EMA,)، وليس "
+            f"⚠️ تنويه: تحليل آلي لثلاثة مؤشرات فنية (RSI, EMA,RSI)، وليس "
             f"توصية استثمارية. تداول الفوركس بالرافعة المالية ينطوي على "
             f"مخاطر عالية."
         )
