@@ -402,59 +402,102 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(back_keyboard)
         )
 
-import yfinance as yf
 import pandas as pd
+import yfinance as yf
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from telegram import Update
-from telegram.error import BadRequest
-from telegram.ext import ContextTypes
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-async def get_and_send_rsi(query, symbol, market_name):
+# ==========================================
+# 1. دوال حساب المؤشرات الماليّة (RSI & EMA)
+# ==========================================
+def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    delta = df['close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+def calculate_ema(df: pd.DataFrame, period: int) -> pd.Series:
+    return df['close'].ewm(span=period, adjust=False).mean()
+
+def build_recommendation(rsi: float, ema_fast: float, ema_slow: float) -> str:
+    if rsi <= 30 and ema_fast > ema_slow:
+        return "🟢 إشارة: شراء قوي (CALL / BUY)"
+    elif rsi >= 70 and ema_fast < ema_slow:
+        return "🔴 إشارة: بيع قوي (PUT / SELL)"
+    elif rsi <= 35:
+        return "🟢 إشارة: شراء (CALL / BUY)"
+    elif rsi >= 65:
+        return "🔴 إشارة: بيع (PUT / SELL)"
+    return "⚪ إشارة: محايد / انتظار"
+
+# ==========================================
+# 2. دالة جلب بيانات الفوركس والذهب
+# ==========================================
+def fetch_forex_klines(symbol="EURUSD=X", interval="15m", limit=200):
     try:
-        data = yf.download(symbol, period="5d", interval="1h", progress=False)
-        
-        if data.empty or len(data) < 15:
-            await query.edit_message_text(text=f"⚠️ بيانات غير كافية لحساب مؤشر RSI لـ {market_name}.")
-            return
-
-        close_prices = data['Close'].values
-        if hasattr(close_prices, "squeeze"):
-            close_prices = close_prices.squeeze()
-
-        delta = pd.Series(close_prices).diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        
-        rs = gain / loss
-        rsi = 100 - (100 / (1 + rs))
-        current_rsi = round(float(rsi.iloc[-1]), 2)
-        
-        # القيمة الافتراضية الآمنة بدون كلمة "حياد"
-        signal = "لا توجد إشارة حالياً ⚪"
-        
-        if current_rsi < 30:
-            signal = "منطقة تشبع بيعي - فرصة شراء (Buy) 🟢"
-        elif current_rsi > 70:
-            signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
-
-        result_text = (
-            f"📊 **نتيجة التحليل الفني ({market_name})**\n"
-            f"-----------------------------------\n"
-            f"📈 قيمة مؤشر RSI: `{current_rsi}`\n"
-            f"💡 الإشارة: {signal}"
-        )
-        
-        # إنشاء زر العودة للقائمة الرئيسية وزر التحديث
-        keyboard = [
-            [InlineKeyboardButton("🔄 تحديث التحليل", callback_data=f"cat_{market_name}")],
-            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(text=result_text, parse_mode="Markdown", reply_markup=reply_markup)
-        
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="5d", interval=interval)
+        if df is None or df.empty:
+            return None
+        df = df.tail(limit).reset_index()
+        df['close'] = df['Close'].astype(float)
+        df['open'] = df['Open'].astype(float)
+        df['high'] = df['High'].astype(float)
+        df['low'] = df['Low'].astype(float)
+        return df
     except Exception as e:
-        await query.edit_message_text(text=f"❌ حدث خطأ أثناء جلب البيانات: {str(e)}")
+        print(f"خطأ جلب البيانات: {e}")
+        return None
+
+# ==========================================
+# 3. دالة التحليل وإصدار الإشارات
+# ==========================================
+def get_signal(name: str, timeframe: str = "15m") -> dict:
+    try:
+        clean_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
+        symbol = "".join(e for e in clean_name if e.isalnum())
+
+        if not symbol.endswith("X") and not symbol.endswith("F"):
+            symbol = f"{symbol}=X"
+
+        df = fetch_forex_klines(symbol, timeframe, limit=200)
+
+        if df is None or df.empty or len(df) < 35:
+            return {"error": f"بيانات غير كافية أو رمز غير صحيح ({symbol})."}
+
+        rsi_series = calculate_rsi(df, period=14)
+        ema_fast_series = calculate_ema(df, period=9)
+        ema_slow_series = calculate_ema(df, period=21)
+
+        current_rsi = round(float(rsi_series.iloc[-1]), 2)
+        ema_fast = round(float(ema_fast_series.iloc[-1]), 4)
+        ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
+        last_price = round(float(df["close"].iloc[-1]), 4)
+
+        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
+
+        desc = (
+            f"📈 الأصل: {symbol}\n"
+            f"⏱️ الفريم: {timeframe}\n"
+            f"💰 آخر سعر إغلاق: {last_price}\n\n"
+            f"— RSI (14): {current_rsi}\n"
+            f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
+            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
+            f"{overall}\n\n"
+            f"⚠️ تنويه: هذا تحليل آلي وليس توصية مالية."
+        )
+
+        return {
+            "desc": desc,
+            "rsi": current_rsi,
+            "ema_fast": ema_fast,
+            "ema_slow": ema_slow,
+            "price": last_price,
+        }
+    except Exception as e:
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+        
         
             
 
