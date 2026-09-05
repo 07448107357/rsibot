@@ -261,7 +261,7 @@ if len(df) < MIN_CANDLES_REQUIRED:
         df = pd.DataFrame({"close": prices})
     return df, None
     except Exception as e:
-        return None, f"error: {str(e)}"
+    return None, f"error: {str(e)}"
         
 
 # =====================================================================
