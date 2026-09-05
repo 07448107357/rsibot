@@ -144,7 +144,7 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
 
 
 # ==========================================================
-# القسم 2: المؤشرات الفنية (RSI, EMA, MACD)
+# القسم 2: المؤشرات الفنية (RSI, EMA, RSI )
 # ==========================================================
 def calculate_rsi(df: pd.DataFrame, period: int = 14) -> float:
     delta = df["close"].diff()
