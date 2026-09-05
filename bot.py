@@ -208,7 +208,57 @@ def analyze_market(df, pair_name, tf_name):
             f"• {decision_text}")
 
     return signal_type, desc
-    
+# تأكد من وجود هذه الدالة بالكامل في الكود لديك
+def get_signal(name: str, timeframe: str = "5m") -> dict:
+    try:
+        raw_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
+        clean_symbol = "".join(e for e in raw_name if e.isalnum())
+
+        if clean_symbol in ["GOLD", "XAUUSD"]:
+            symbol = "GC=F"
+        elif clean_symbol in ["AAPL", "APPLE"]:
+            symbol = "AAPL"
+        else:
+            if clean_symbol.endswith("X") and not clean_symbol.endswith("=X"):
+                symbol = f"{clean_symbol[:-1]}=X"
+            elif not clean_symbol.endswith("=X"):
+                symbol = f"{clean_symbol}=X"
+            else:
+                symbol = clean_symbol
+
+        df = fetch_market_data(symbol, timeframe, limit=200)
+
+        if (df is None or df.empty) and not symbol.endswith("=X"):
+            symbol = clean_symbol
+            df = fetch_market_data(symbol, timeframe, limit=200)
+
+        if df is None or df.empty or len(df) < 35:
+            return {"error": f"بيانات غير كافية أو رمز غير صحيح ({name})."}
+
+        rsi_series = calculate_rsi(df, period=14)
+        ema_fast_series = calculate_ema(df, period=9)
+        ema_slow_series = calculate_ema(df, period=21)
+
+        current_rsi = round(float(rsi_series.iloc[-1]), 2)
+        ema_fast = round(float(ema_fast_series.iloc[-1]), 4)
+        ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
+        last_price = round(float(df["close"].iloc[-1]), 4)
+
+        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
+
+        desc = (
+            f"📈 الأصل: {symbol}\n"
+            f"⏱️ الفريم: {timeframe}\n"
+            f"💰 آخر سعر إغلاق: {last_price}\n\n"
+            f"— RSI (14): {current_rsi}\n"
+            f"— EMA9: {ema_fast} | EMA21: {ema_slow}\n\n"
+            f"{overall}"
+        )
+
+        return {"desc": desc}
+    except Exception as e:
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+        
 
 # =====================================================================
 # واجهة تليجرام
