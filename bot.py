@@ -93,7 +93,7 @@ import numpy as np
 # القسم 3: الدالة الرئيسية analyze_market
 # ==========================================================
 def analyze_market(name: str, timeframe: str = "15m") -> dict:
-    timeframe: أحد القيم في TIMEFRAME_MAP
+    timeframe: TIMEFRAME_MAP
     try:
         if timeframe not in TIMEFRAME_MAP:
             return {"error": f"فريم غير مدعوم: {timeframe}. الفريمات المتاحة: {', '.join(TIMEFRAME_MAP.keys())}"}
