@@ -134,20 +134,36 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
     
+import requests
+
 def get_signal(name: str, timeframe: str = "15m") -> dict:
     try:
+        # تجهيز الرمز ليتوافق مع yfinance (مثل EURUSD=X أو GC=F للذهب)
         symbol = name.replace("/", "").replace("-", "").upper()
+        if not symbol.endswith("=X") and not symbol.endswith("=F"):
+            symbol = f"{symbol}=X"
+
+        # جلب بيانات الشموع
         df = fetch_forex_klines(symbol, timeframe, limit=200)
-        if len(df) < 35:
-            return {"error": "بيانات غير كافية لحساب المؤشرات."}
 
-        current_rsi = calculate_rsi(df, period=14)
-        ema_fast = calculate_ema(df, period=9)
-        ema_slow = calculate_ema(df, period=21)
-        last_price = float(df["close"].iloc[-1])
+        # 1. التحقق من وجود البيانات وحجمها
+        if df is None or df.empty or len(df) < 35:
+            return {"error": f"بيانات غير كافية أو رمز غير صحيح لحساب المؤشرات ({symbol})."}
 
+        # 2. حساب المؤشرات واستخراج القيمة الأخيرة بشكل صحيح (.iloc[-1])
+        rsi_series = calculate_rsi(df, period=14)
+        ema_fast_series = calculate_ema(df, period=9)
+        ema_slow_series = calculate_ema(df, period=21)
+
+        current_rsi = round(float(rsi_series.iloc[-1]), 2)
+        ema_fast = round(float(ema_fast_series.iloc[-1]), 4)
+        ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
+        last_price = round(float(df["close"].iloc[-1]), 4)
+
+        # توليد التوصية
         overall = build_recommendation(current_rsi, ema_fast, ema_slow)
 
+        # صياغة النص النهائي
         desc = (
             f"📈 الأصل: {symbol}\n"
             f"⏱️ الفريم: {timeframe}\n"
@@ -156,10 +172,10 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
             f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: هذا تحليل آلي لمؤشرين فنيين شائعين (RSI, EMA)، "
-            f"وليس توصية استثمارية. التداول ينطوي على مخاطر، والمؤشرات الفنية "
-            f"قد تتعارض أو تتأخر عن حركة السعر الفعلية."
+            f"⚠️ تنويه: هذا تحليل آلي لمؤشرين فنيين (RSI, EMA)، "
+            f"وليس توصية استثمارية. التداول ينطوي على مخاطر عالية."
         )
+
         return {
             "desc": desc,
             "rsi": current_rsi,
@@ -168,13 +184,8 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
             "price": last_price,
         }
 
-    except requests.exceptions.HTTPError as e:
-        return {"error": f"رمز غير صحيح أو خطأ من Binance: {str(e)}"}
-    except requests.exceptions.RequestException as e:
-        return {"error": f"تعذر الاتصال بـ Binance: {str(e)}"}
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
-        
         
         
             
