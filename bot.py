@@ -124,7 +124,7 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
             f"— : {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
             f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: تحليل آلي لثلاثة مؤشرات فنية (RSI, EMA, MACD)، وليس "
+            f"⚠️ تنويه: تحليل آلي لثلاثة مؤشرات فنية (RSI, EMA,)، وليس "
             f"توصية استثمارية. تداول الفوركس بالرافعة المالية ينطوي على "
             f"مخاطر عالية."
         )
