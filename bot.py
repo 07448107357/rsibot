@@ -142,62 +142,6 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
-
-# ==========================================================
-# القسم 2: المؤشرات الفنية (RSI, EMA,  )
-# ==========================================================
-def calculate_rsi(df: pd.DataFrame, period: int = 14) -> float:
-    delta = df["close"].diff()
-    gain = delta.clip(lower=0)
-    loss = -1 * delta.clip(upper=0)
-    avg_gain = gain.rolling(window=period).mean()
-    avg_loss = loss.rolling(window=period).mean()
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return round(float(rsi.iloc[-1]), 2)
-def calculate_ema(df: pd.DataFrame, period: int) -> float:
-    ema = df["close"].ewm(span=period, adjust=False).mean()
-    return round(float(ema.iloc[-1]), 5)
-def calculate_macd(df: pd.DataFrame, fast=12, slow=26, signal=9):
-    ema_fast = df["close"].ewm(span=fast, adjust=False).mean()
-    ema_slow = df["close"].ewm(span=slow, adjust=False).mean()
-    macd_line = ema_fast - ema_slow
-    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
-    histogram = macd_line - signal_line
-    current_macd = round(float(macd_line.iloc[-1]), 5)
-    current_signal = round(float(signal_line.iloc[-1]), 5)
-    current_hist = round(float(histogram.iloc[-1]), 5)
-    prev_hist = float(histogram.iloc[-2])
-    if prev_hist <= 0 < current_hist:
-        cross = "bullish_cross"
-    elif prev_hist >= 0 > current_hist:
-        cross = "bearish_cross"
-    else:
-        cross = "none"
-
-    return {"macd": current_macd, "signal": current_signal, "histogram": current_hist, "cross": cross}
-
-
-def build_recommendation(rsi: float, macd_data: dict, ema_fast: float, ema_slow: float) -> str:
-    votes = []
-    if rsi <= 30:
-        votes.append("buy")
-    elif rsi >= 70:
-        votes.append("sell")
-
-    if macd_data["cross"] == "bullish_cross" or macd_data["histogram"] > 0:
-        votes.append("buy")
-    elif macd_data["cross"] == "bearish_cross" or macd_data["histogram"] < 0:
-        votes.append("sell")
-
-    votes.append("buy" if ema_fast > ema_slow else "sell")
-
-    buy_votes, sell_votes = votes.count("buy"), votes.count("sell")
-    if buy_votes > sell_votes:
-        return "🟢 الاتجاه العام للمؤشرات: ميل شرائي"
-    elif sell_votes > buy_votes:
-        return "🔴 الاتجاه العام للمؤشرات: ميل بيعي"
-    return "⚪ الاتجاه العام للمؤشرات: متضارب / محايد"
     
   # ==========================================================
 # القسم 3: تجميع كل شيء في إشارة واحدة جاهزة للعرض
