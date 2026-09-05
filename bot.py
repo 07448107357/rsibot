@@ -89,134 +89,98 @@ TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 import pandas as pd
 import numpy as np
 
-def analyze_market(name: str, timeframe: str = "15m") -> dict:
-    try:
-        if timeframe not in TIMEFRAME_MAP:
-            return {"error": f"فريم غير مدعوم: {timeframe}. الفريمات المتاحة: {', '.join(TIMEFRAME_MAP.keys())}"}
-        symbol = name.upper().replace("-", "/")
-        if "/" not in symbol:
-            return {"error": "صيغة الرمز غير صحيحة. استخدم مثل: EUR/USD أو GBP/USD"}
-        df = fetch_forex_klines(symbol, timeframe, size=200)
-        if len(df) < MIN_CANDLES_REQUIRED:
-            return {"error": f"بيانات غير كافية ({len(df)} شمعة فقط) لحساب المؤشرات بدقة."}
+def analyze_market(df, name, timeframe, sl_atr_mult=1.5, tp_atr_mult=2.5):
+    df = df.copy()
+    closes = pd.to_numeric(df["close"], errors="coerce")
+    if closes.isna().all():
+        raise ValueError("لا توجد بيانات أسعار صالحة")
 
-        current_rsi = calculate_rsi(df, period=14)
-        ema_fast = calculate_ema(df, period=9)
-        ema_slow = calculate_ema(df, period=21)
-        last_price = float(df["close"].iloc[-1])
+    current_price = float(closes.iloc[-1])
 
-        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
+    delta = closes.diff()
+    gain_14 = delta.where(delta > 0, 0).rolling(window=14).mean()
+    loss_14 = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rsi_14 = 100 - (100 / (1 + gain_14 / loss_14.replace(0, np.nan)))
+    current_rsi_14 = float(rsi_14.iloc[-1]) if not pd.isna(rsi_14.iloc[-1]) else 50.0
 
-        desc = (
-            f"📈 الزوج: {symbol}\n"
-            f"⏱️ الفريم: {timeframe}\n"
-            f"💰 آخر سعر: {last_price}\n\n"
-            f"— RSI (14): {current_rsi}\n"
-            f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
-            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
-            f"{overall}\n\n"
-            f"⚠️ تنويه: تحليل آلي لمؤشرين فنيين (RSI, EMA)، وليس "
-            f"توصية استثمارية. تداول الفوركس بالرافعة المالية ينطوي على "
-            f"مخاطر عالية."
-        )
-        return {
-            "desc": desc, "rsi": current_rsi, "ema_fast": ema_fast,
-            "ema_slow": ema_slow, "price": last_price,
-        }
+    gain_9 = delta.where(delta > 0, 0).rolling(window=9).mean()
+    loss_9 = (-delta.where(delta < 0, 0)).rolling(window=9).mean()
+    rsi_9 = 100 - (100 / (1 + gain_9 / loss_9.replace(0, np.nan)))
+    current_rsi_9 = float(rsi_9.iloc[-1]) if not pd.isna(rsi_9.iloc[-1]) else 50.0
 
-    except requests.exceptions.RequestException as e:
-        return {"error": f"تعذر الاتصال بمزود البيانات: {str(e)}"}
-    except ValueError as e:
-        return {"error": str(e)}
-    except RuntimeError as e:
-        return {"error": str(e)}
-    except Exception as e:
-        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+    ema_14 = closes.ewm(span=14, adjust=False).mean()
+    current_ema = float(ema_14.iloc[-1])
+    prev_ema = float(ema_14.iloc[-2]) if len(ema_14) > 1 else current_ema
 
-import pandas as pd
+    sma20 = closes.rolling(window=20).mean()
+    std20 = closes.rolling(window=20).std()
+    upper_band = sma20 + std20 * 2
+    lower_band = sma20 - std20 * 2
+    current_upper = float(upper_band.iloc[-1]) if not pd.isna(upper_band.iloc[-1]) else current_price
+    current_lower = float(lower_band.iloc[-1]) if not pd.isna(lower_band.iloc[-1]) else current_price
 
-# دالة حساب مؤشر RSI
-def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+    atr_series = compute_atr(df)
+    current_atr = float(atr_series.iloc[-1]) if not pd.isna(atr_series.iloc[-1]) else (current_price * 0.005)
+    if current_atr <= 0:
+        current_atr = current_price * 0.005
 
-# دالة حساب المتوسط المتحرك الأسي EMA
-def calculate_ema(df: pd.DataFrame, period: int) -> pd.Series:
-    return df['close'].ewm(span=period, adjust=False).mean()
-    
+    score = 0
+    if current_price > current_ema:
+        score += 1
+    elif current_price < current_ema:
+        score -= 1
 
-import requests
+    if current_ema > prev_ema:
+        score += 1
+    elif current_ema < prev_ema:
+        score -= 1
 
-def get_signal(name: str, timeframe: str = "5m") -> dict:
-    try:
-        # 1. تنظيف الرمز وتحويله للحروف الكبيرة
-        clean_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
-        
-        # استخراج الحروف والأرقام فقط (حذف الأعلام والرموز التعبيرية)
-        symbol_base = "".join(e for e in clean_name if e.isalnum())
+    if current_rsi_14 > 55:
+        score += 1
+    elif current_rsi_14 < 45:
+        score -= 1
 
-        # 2. إضافة الصيغة الخاصة بـ Yahoo Finance بذكاء
-        if symbol_base.endswith("X") and not symbol_base.endswith("=X"):
-            # إذا كان الرمز ينتهي بـ X مجردة مثل AUDCHFX
-            symbol = f"{symbol_base[:-1]}=X"
-        elif not symbol_base.endswith("=X") and not symbol_base.endswith("F"):
-            # للأزواج العادية مثل NZDCHF -> NZDCHF=X
-            symbol = f"{symbol_base}=X"
-        else:
-            symbol = symbol_base
+    if current_rsi_9 > current_rsi_14:
+        score += 1
+    elif current_rsi_9 < current_rsi_14:
+        score -= 1
 
-        # 3. جلب البيانات
-        df = fetch_forex_klines(symbol, timeframe, limit=200)
+    band_width = current_upper - current_lower
+    if band_width > 0:
+        pos = (current_price - current_lower) / band_width
+        if pos > 0.5:
+            score += 1
+        elif pos < 0.5:
+            score -= 1
 
-        # إذا لم تجد بيانات باستخدام الصيغة الأولى، جرب البحث بالرمز المجرد كبديل
-        if df is None or df.empty:
-            df = fetch_forex_klines(symbol_base, timeframe, limit=200)
-            if df is not None and not df.empty:
-                symbol = symbol_base
+    if score == 0:
+        score = 1 if current_price >= current_ema else -1
 
-        if df is None or df.empty or len(df) < 35:
-            return {"error": f"بيانات غير كافية أو رمز غير صحيح ({name})."}
+    if score > 0:
+        signal = "CALL"
+        sl = current_price - (current_atr * sl_atr_mult)
+        tp = current_price + (current_atr * tp_atr_mult)
+        title = "🚀 إشارة شراء (CALL)"
+    else:
+        signal = "PUT"
+        sl = current_price + (current_atr * sl_atr_mult)
+        tp = current_price - (current_atr * tp_atr_mult)
+        title = "📉 إشارة بيع (PUT)"
 
-        # 4. حساب المؤشرات
-        rsi_series = calculate_rsi(df, period=14)
-        ema_fast_series = calculate_ema(df, period=9)
-        ema_slow_series = calculate_ema(df, period=21)
+    risk = abs(current_price - sl)
+    reward = abs(tp - current_price)
+    rr_ratio = round(reward / risk, 2) if risk > 0 else None
 
-        current_rsi = round(float(rsi_series.iloc[-1]), 2)
-        ema_fast = round(float(ema_fast_series.iloc[-1]), 4)
-        ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
-        last_price = round(float(df["close"].iloc[-1]), 4)
-
-        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
-
-        desc = (
-            f"📈 الأصل: {symbol}\n"
-            f"⏱️ الفريم: {timeframe}\n"
-            f"💰 آخر سعر إغلاق: {last_price}\n\n"
-            f"— RSI (14): {current_rsi}\n"
-            f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
-            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
-            f"{overall}\n\n"
-            f"⚠️ تنويه: هذا تحليل آلي وليس توصية مالية."
-        )
-
-        return {
-            "desc": desc,
-            "rsi": current_rsi,
-            "ema_fast": ema_fast,
-            "ema_slow": ema_slow,
-            "price": last_price,
-        }
-
-    except Exception as e:
-        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
-        
-            
+    desc = (
+        f"{title}\n"
+        f"• الأصل: {name} | الفريم: {timeframe}\n"
+        f"• سعر الدخول: {current_price:.5f}\n"
+        f"• 🛑 وقف الخسارة (SL): {sl:.5f}\n"
+        f"• 🎯 جني الأرباح (TP): {tp:.5f}\n"
+        f"• نسبة المخاطرة:العائد ≈ 1:{rr_ratio}\n"
+        f"• EMA14: {current_ema:.5f} | RSI14: {current_rsi_14:.1f} | RSI9: {current_rsi_9:.1f}\n"
+        f"• قوة الإشارة: {abs(score)}/5"
+      
 
 # =====================================================================
 # واجهة تليجرام
@@ -409,104 +373,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             result_text, 
             reply_markup=InlineKeyboardMarkup(back_keyboard)
         )
-
-import pandas as pd
-import yfinance as yf
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from telegram import Update
-
-# ==========================================
-# 1. دوال حساب المؤشرات الماليّة (RSI & EMA)
-# ==========================================
-def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
-
-def calculate_ema(df: pd.DataFrame, period: int) -> pd.Series:
-    return df['close'].ewm(span=period, adjust=False).mean()
-
-def build_recommendation(rsi: float, ema_fast: float, ema_slow: float) -> str:
-    if rsi <= 30 and ema_fast > ema_slow:
-        return "🟢 إشارة: شراء قوي (CALL / BUY)"
-    elif rsi >= 70 and ema_fast < ema_slow:
-        return "🔴 إشارة: بيع قوي (PUT / SELL)"
-    elif rsi <= 35:
-        return "🟢 إشارة: شراء (CALL / BUY)"
-    elif rsi >= 65:
-        return "🔴 إشارة: بيع (PUT / SELL)"
-    return "⚪ إشارة: محايد / انتظار"
-
-# ==========================================
-# 2. دالة جلب بيانات الفوركس والذهب
-# ==========================================
-def fetch_forex_klines(symbol="#", interval="15m", limit=200):
-    try:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period="5d", interval=interval)
-        if df is None or df.empty:
-            return None
-        df = df.tail(limit).reset_index()
-        df['close'] = df['Close'].astype(float)
-        df['open'] = df['Open'].astype(float)
-        df['high'] = df['High'].astype(float)
-        df['low'] = df['Low'].astype(float)
-        return df
-    except Exception as e:
-        print(f"خطأ جلب البيانات: {e}")
-        return None
-
-# ==========================================
-# 3. دالة التحليل وإصدار الإشارات
-# ==========================================
-def get_signal(name: str, timeframe: str = "15m") -> dict:
-    try:
-        clean_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
-        symbol = "".join(e for e in clean_name if e.isalnum())
-
-        if not symbol.endswith("X") and not symbol.endswith("F"):
-            symbol = f"{symbol}=X"
-
-        df = fetch_forex_klines(symbol, timeframe, limit=200)
-
-        if df is None or df.empty or len(df) < 35:
-            return {"error": f"بيانات غير كافية أو رمز غير صحيح ({symbol})."}
-
-        rsi_series = calculate_rsi(df, period=14)
-        ema_fast_series = calculate_ema(df, period=9)
-        ema_slow_series = calculate_ema(df, period=21)
-
-        current_rsi = round(float(rsi_series.iloc[-1]), 2)
-        ema_fast = round(float(ema_fast_series.iloc[-1]), 4)
-        ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
-        last_price = round(float(df["close"].iloc[-1]), 4)
-
-        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
-
-        desc = (
-            f"📈 الأصل: {symbol}\n"
-            f"⏱️ الفريم: {timeframe}\n"
-            f"💰 آخر سعر إغلاق: {last_price}\n\n"
-            f"— RSI (14): {current_rsi}\n"
-            f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
-            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
-            f"{overall}\n\n"
-            f"⚠️ تنويه: هذا تحليل آلي وليس توصية مالية."
-        )
-
-        return {
-            "desc": desc,
-            "rsi": current_rsi,
-            "ema_fast": ema_fast,
-            "ema_slow": ema_slow,
-            "price": last_price,
-        }
-    except Exception as e:
-        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
-        
-        
             
 
 def main():
