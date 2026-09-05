@@ -476,7 +476,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # هنا يتم تحديد الأكشن بناءً على زر الضغط (مثلاً الفريمات الزمنية أو أسواق التداول)
     if data == "refresh":
         new_text = "🔄 جاري تحديث البيانات والتحليل بناءً على مؤشر RSI..."
-      new_reply_markup = query.message.reply_markup # أو القائمة الجديدة ال
+        new_reply_markup = query.message.reply_markup # أو القائمة الجديدة ال
     else:
         clean_data = data.replace("cat_", "").replace("_", " ")
         
