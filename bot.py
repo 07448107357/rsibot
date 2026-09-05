@@ -259,17 +259,24 @@ def build_recommendation(rsi: float, ema_fast: float, ema_slow: float) -> str:
     
 
 
-# تأكد من وجود هذه الدالة بالكامل في الكود لديك
 def get_signal(name: str, timeframe: str = "5m") -> dict:
     try:
         raw_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
         clean_symbol = "".join(e for e in raw_name if e.isalnum())
 
-        if clean_symbol in ["GOLD", "XAUUSD"]:
+        # التوجيه الدقيق لكل نوع أصل لتجنب أخطاء yfinance
+        if clean_symbol in ["GOLD", "XAU", "XAUUSD"]:
             symbol = "GC=F"
         elif clean_symbol in ["AAPL", "APPLE"]:
             symbol = "AAPL"
+        elif clean_symbol in ["TSLA", "TESLA"]:
+            symbol = "TSLA"
+        elif clean_symbol in ["BTC", "BITCOIN"]:
+            symbol = "BTC-USD"
+        elif clean_symbol in ["BNB"]:
+            symbol = "BNB-USD"
         else:
+            # للأزواج وعملات الفوركس فقط نضيف =X
             if clean_symbol.endswith("X") and not clean_symbol.endswith("=X"):
                 symbol = f"{clean_symbol[:-1]}=X"
             elif not clean_symbol.endswith("=X"):
@@ -309,6 +316,7 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
         return {"desc": desc}
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+        
         
 
 # =====================================================================
@@ -497,11 +505,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{result.get('desc', '')}"
             f"{disclaimer}"
         )
-        
-        await query.message.edit_text(
-            result_text, 
-            reply_markup=InlineKeyboardMarkup(back_keyboard)
-        )
+
+    await query.message.edit_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]])
+    )
+    
+            
             
 
 def main():
@@ -510,6 +520,7 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
+
 
     print("Bot is starting...")
     app.run_polling(drop_pending_updates=True)
