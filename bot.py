@@ -205,7 +205,6 @@ def build_recommendation(rsi: float, macd_data: dict, ema_fast: float, ema_slow:
 def get_signal(name: str, timeframe: str = "15m") -> dict:
     
     timeframe: TIMEFRAME_MAP
-    يُرجع dict "desc" (#)  "error".
     try:
         symbol = name.replace("/", "").replace("-", "").upper()
         df = fetch_binance_klines(symbol, timeframe, limit=200)
