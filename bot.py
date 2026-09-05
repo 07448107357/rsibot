@@ -144,7 +144,7 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
 
 
 # ==========================================================
-# القسم 2: المؤشرات الفنية (RSI, EMA, RSI )
+# القسم 2: المؤشرات الفنية (RSI, EMA,  )
 # ==========================================================
 def calculate_rsi(df: pd.DataFrame, period: int = 14) -> float:
     delta = df["close"].diff()
@@ -496,7 +496,7 @@ async def get_and_send_rsi(query, symbol, market_name):
         elif current_rsi > 70:
             signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
         else:
-            signal = "السوق في حالة حياد ⚪"
+            
 
         result_text = (
             f"📊 **نتيجة التحليل الفني ({market_name})**\n"
