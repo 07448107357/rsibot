@@ -371,7 +371,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
-        symbol_name = context.user_data.get("selected_symbol", "EUR/USD")
+        symbol_name = context.user_data.get("selected_symbol", "#")
 
         back_keyboard = [
             [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"sym_{symbol_name}")],
@@ -434,7 +434,7 @@ def build_recommendation(rsi: float, ema_fast: float, ema_slow: float) -> str:
 # ==========================================
 # 2. دالة جلب بيانات الفوركس والذهب
 # ==========================================
-def fetch_forex_klines(symbol="EURUSD=X", interval="15m", limit=200):
+def fetch_forex_klines(symbol="#", interval="15m", limit=200):
     try:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period="5d", interval=interval)
