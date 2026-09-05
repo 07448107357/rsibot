@@ -137,7 +137,7 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
 def get_signal(name: str, timeframe: str = "15m") -> dict:
     try:
         symbol = name.replace("/", "").replace("-", "").upper()
-        df = fetch_binance_klines(symbol, timeframe, limit=200)
+        df = fetch_forex_klines(symbol, timeframe, limit=200)
         if len(df) < 35:
             return {"error": "بيانات غير كافية لحساب المؤشرات."}
 
