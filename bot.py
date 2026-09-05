@@ -253,7 +253,8 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
 
 
 
-def fetch_binance_klines(symbol, timeframe="15m", limit=50):
+df = fetch_forex_klines(symbol, timeframe, size=200)
+if len(df) < MIN_CANDLES_REQUIRED:
     try:
         df = fetch_forex_klines(symbol, timeframe, size=200)
         if len(df) < MIN_CANDLES_REQUIRED:
