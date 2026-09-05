@@ -134,39 +134,29 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
     
-  # ==========================================================
-# القسم 3: تجميع كل شيء في إشارة واحدة جاهزة للعرض
-# ==========================================================
-def get_signal(name: str, timeframe: str = "15m") -> dict:
-    
-    timeframe: TIMEFRAME_MAP
+  def get_signal(name: str, timeframe: str = "15m") -> dict:
     try:
         symbol = name.replace("/", "").replace("-", "").upper()
         df = fetch_binance_klines(symbol, timeframe, limit=200)
         if len(df) < 35:
-            return {"error": "بيانات غير كافية لحساب المؤشرات (خصوصًا MACD)."}
+            return {"error": "بيانات غير كافية لحساب المؤشرات."}
+
         current_rsi = calculate_rsi(df, period=14)
         ema_fast = calculate_ema(df, period=9)
         ema_slow = calculate_ema(df, period=21)
-        macd_data = calculate_macd(df)
         last_price = float(df["close"].iloc[-1])
-        overall = build_recommendation(current_rsi, macd_data, ema_fast, ema_slow)
-        cross_text = {
-            "bullish_cross": "↗️ تقاطع صعودي جديد",
-            "bearish_cross": "↘️ تقاطع هبوطي جديد",
-            "none": "بدون تقاطع جديد",
-        }[macd_data["cross"]]
+
+        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
+
         desc = (
             f"📈 الأصل: {symbol}\n"
             f"⏱️ الفريم: {timeframe}\n"
             f"💰 آخر سعر إغلاق: {last_price}\n\n"
             f"— RSI (14): {current_rsi}\n"
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
-            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n"
-            f"— {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
-            f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
+            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: هذا تحليل آلي لثلاثة مؤشرات فنية شائعة (RSI, EMA, MACD)، "
+            f"⚠️ تنويه: هذا تحليل آلي لمؤشرين فنيين شائعين (RSI, EMA)، "
             f"وليس توصية استثمارية. التداول ينطوي على مخاطر، والمؤشرات الفنية "
             f"قد تتعارض أو تتأخر عن حركة السعر الفعلية."
         )
@@ -175,7 +165,6 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
             "rsi": current_rsi,
             "ema_fast": ema_fast,
             "ema_slow": ema_slow,
-            "macd": macd_data,
             "price": last_price,
         }
 
@@ -184,24 +173,7 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
     except requests.exceptions.RequestException as e:
         return {"error": f"تعذر الاتصال بـ Binance: {str(e)}"}
     except Exception as e:
-        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}      
-
-
-def fetch_binance_klines(symbol, timeframe="15m", limit=50):
-    try:
-        df = fetch_forex_klines(symbol, timeframe, size=200)
-        if len(df) < MIN_CANDLES_REQUIRED:
-            data_points = 50
-            np.random.seed()
-            prices = 100 + np.cumsum(np.random.normal(0, 1, data_points))
-            df = pd.DataFrame({"close": prices})
-        return df, None
-    except Exception as e:
-        data_points = 50
-        np.random.seed()
-        prices = 100 + np.cumsum(np.random.normal(0, 1, data_points))
-        df = pd.DataFrame({"close": prices})
-        return df, None
+        return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
         
         
         
