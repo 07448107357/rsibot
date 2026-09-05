@@ -251,17 +251,17 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}      
 
-
-df = fetch_forex_klines(symbol, timeframe, size=200)
-if len(df) < MIN_CANDLES_REQUIRED:
-     data_points = 50
-     np.random.seed()
-     prices = 100 + np.cumsum(np.random.normal(0, 1, data_points))
-     df = pd.DataFrame({"close": prices})
-     return df, None
-     except Exception ase:
-     return None, f"error: {str(e)}"
-        
+try:
+    df = fetch_forex_klines(symbol, timeframe, size=200)
+    if len(df) < MIN_CANDLES_REQUIRED:
+        data_points = 50
+        np.random.seed()
+        prices = 100 + np.cumsum(np.random.normal(0, 1, data_points))
+        df = pd.DataFrame({"close": prices})
+        return df, None
+except Exception as e:
+    return None, f"error: {str(e)}"
+            
 
 # =====================================================================
 # واجهة تليجرام
