@@ -469,8 +469,8 @@ import pandas as pd
 from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-# 1. دالة جلب البيانات وحساب مؤشر RSI وعرض النتيجة
 async def get_and_send_rsi(query, symbol, market_name):
     try:
         data = yf.download(symbol, period="5d", interval="1h", progress=False)
@@ -491,63 +491,32 @@ async def get_and_send_rsi(query, symbol, market_name):
         rsi = 100 - (100 / (1 + rs))
         current_rsi = round(float(rsi.iloc[-1]), 2)
         
-        signal = "لا توجد إشارة حالياً ⚪"  # قيمة افتراضية آمنة لمنع الخطأ
-
+        # القيمة الافتراضية الآمنة بدون كلمة "حياد"
+        signal = "لا توجد إشارة حالياً ⚪"
+        
         if current_rsi < 30:
             signal = "منطقة تشبع بيعي - فرصة شراء (Buy) 🟢"
         elif current_rsi > 70:
             signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
-    
-    
+
+        result_text = (
             f"📊 **نتيجة التحليل الفني ({market_name})**\n"
             f"-----------------------------------\n"
             f"📈 قيمة مؤشر RSI: `{current_rsi}`\n"
             f"💡 الإشارة: {signal}"
+        )
         
+        # إنشاء زر العودة للقائمة الرئيسية وزر التحديث
+        keyboard = [
+            [InlineKeyboardButton("🔄 تحديث التحليل", callback_data=f"cat_{market_name}")],
+            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await query.edit_message_text(text=result_text, parse_mode="Markdown")
+        await query.edit_message_text(text=result_text, parse_mode="Markdown", reply_markup=reply_markup)
         
     except Exception as e:
         await query.edit_message_text(text=f"❌ حدث خطأ أثناء جلب البيانات: {str(e)}")
-
-# 2. دالة معالجة الأزرار
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    data = query.data
-    
-    if data == "refresh":
-        new_text = "🔄 جاري تحديث البيانات والتحليل بناءً على مؤشر RSI..."
-        new_reply_markup = query.message.reply_markup
-        
-        try:
-            await query.edit_message_text(text=new_text, reply_markup=new_reply_markup)
-        except BadRequest as e:
-            if "Message is not modified" in str(e):
-                pass
-            else:
-                raise e
-    else:
-        clean_data = data.replace("cat_", "").replace("_", " ")
-        
-        if "Forex" in data or "العملات" in data:
-            symbol = "EURUSD=X"
-            market_name = "العملات (Forex)"
-        elif "Crypto" in data or "الرقمية" in data:
-            symbol = "BTC-USD"
-            market_name = "العملات الرقمية (Crypto)"
-        else:
-            symbol = "AAPL"
-            market_name = "الأسهم (Stocks)"
-
-        try:
-            await query.edit_message_text(text=f"📊 تم اختيار: {clean_data}\nجاري جلب البيانات وحساب مؤشر RSI...")
-        except BadRequest as e:
-            if "Message is not modified" not in str(e):
-                raise e
-        
-        await get_and_send_rsi(query, symbol, market_name)
         
             
 
