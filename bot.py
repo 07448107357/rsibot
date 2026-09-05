@@ -89,11 +89,7 @@ TIMEFRAMES = ["5s", "10s", "15s", "30s", "1m", "5m", "15m", "30m", "1h"]
 import pandas as pd
 import numpy as np
 
-# ==========================================================
-# القسم 3: الدالة الرئيسية analyze_market
-# ==========================================================
 def analyze_market(name: str, timeframe: str = "15m") -> dict:
-    timeframe: TIMEFRAME_MAP
     try:
         if timeframe not in TIMEFRAME_MAP:
             return {"error": f"فريم غير مدعوم: {timeframe}. الفريمات المتاحة: {', '.join(TIMEFRAME_MAP.keys())}"}
@@ -103,34 +99,29 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
         df = fetch_forex_klines(symbol, timeframe, size=200)
         if len(df) < MIN_CANDLES_REQUIRED:
             return {"error": f"بيانات غير كافية ({len(df)} شمعة فقط) لحساب المؤشرات بدقة."}
+
         current_rsi = calculate_rsi(df, period=14)
         ema_fast = calculate_ema(df, period=9)
         ema_slow = calculate_ema(df, period=21)
-        macd_data = calculate_macd(df)
         last_price = float(df["close"].iloc[-1])
-        overall = build_recommendation(current_rsi, macd_data, ema_fast, ema_slow)
-        cross_text = {
-            "bullish_cross": "↗️ تقاطع صعودي جديد",
-            "bearish_cross": "↘️ تقاطع هبوطي جديد",
-            "none": "بدون تقاطع جديد",
-        }[macd_data["cross"]]
+
+        overall = build_recommendation(current_rsi, ema_fast, ema_slow)
+
         desc = (
             f"📈 الزوج: {symbol}\n"
             f"⏱️ الفريم: {timeframe}\n"
             f"💰 آخر سعر: {last_price}\n\n"
             f"— RSI (14): {current_rsi}\n"
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
-            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n"
-            f"— RSI: {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
-            f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
+            f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: تحليل آلي لثلاثة مؤشرات فنية (RSI, EMA,RSI)، وليس "
+            f"⚠️ تنويه: تحليل آلي لمؤشرين فنيين (RSI, EMA)، وليس "
             f"توصية استثمارية. تداول الفوركس بالرافعة المالية ينطوي على "
             f"مخاطر عالية."
         )
         return {
             "desc": desc, "rsi": current_rsi, "ema_fast": ema_fast,
-            "ema_slow": ema_slow, "macd": macd_data, "price": last_price,
+            "ema_slow": ema_slow, "price": last_price,
         }
 
     except requests.exceptions.RequestException as e:
