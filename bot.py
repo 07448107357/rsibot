@@ -152,29 +152,37 @@ def calculate_ema(df: pd.DataFrame, period: int) -> pd.Series:
 
 import requests
 
-def get_signal(name: str, timeframe: str = "15m") -> dict:
+def get_signal(name: str, timeframe: str = "5m") -> dict:
     try:
-        # 1. تنظيف الرمز من كلمة OTC والمسافات والرموز التعبيرية
-        clean_name = name.upper()
-        clean_name = clean_name.replace("OTC", "").replace("/", "").replace("-", "").strip()
+        # 1. تنظيف الرمز وتحويله للحروف الكبيرة
+        clean_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
         
-        # حذف أي رموز أو مسافات زائدة
-        symbol = "".join(e for e in clean_name if e.isalnum())
+        # استخراج الحروف والأرقام فقط (حذف الأعلام والرموز التعبيرية)
+        symbol_base = "".join(e for e in clean_name if e.isalnum())
 
-        # 2. إضافة صياغة الفوركس المناسبة لـ Yahoo Finance
-        if not symbol.endswith("X"):
-            symbol = f"{symbol}=X"
+        # 2. إضافة الصيغة الخاصة بـ Yahoo Finance بذكاء
+        if symbol_base.endswith("X") and not symbol_base.endswith("=X"):
+            # إذا كان الرمز ينتهي بـ X مجردة مثل AUDCHFX
+            symbol = f"{symbol_base[:-1]}=X"
+        elif not symbol_base.endswith("=X") and not symbol_base.endswith("F"):
+            # للأزواج العادية مثل NZDCHF -> NZDCHF=X
+            symbol = f"{symbol_base}=X"
         else:
-            # في حال كان الرمز يتضمن X مثل AUDCHFX
-            symbol = f"{symbol[:-1]}=X" if not symbol.endswith("=X") else symbol
+            symbol = symbol_base
 
-        # جلب البيانات
+        # 3. جلب البيانات
         df = fetch_forex_klines(symbol, timeframe, limit=200)
 
-        if df is None or df.empty or len(df) < 35:
-            return {"error": f"بيانات غير كافية أو رمز غير صحيح لحساب المؤشرات ({symbol})."}
+        # إذا لم تجد بيانات باستخدام الصيغة الأولى، جرب البحث بالرمز المجرد كبديل
+        if df is None or df.empty:
+            df = fetch_forex_klines(symbol_base, timeframe, limit=200)
+            if df is not None and not df.empty:
+                symbol = symbol_base
 
-        # حساب المؤشرات
+        if df is None or df.empty or len(df) < 35:
+            return {"error": f"بيانات غير كافية أو رمز غير صحيح ({name})."}
+
+        # 4. حساب المؤشرات
         rsi_series = calculate_rsi(df, period=14)
         ema_fast_series = calculate_ema(df, period=9)
         ema_slow_series = calculate_ema(df, period=21)
@@ -194,7 +202,7 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
             f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: هذا تحليل آلي لمؤشرين فنيين (RSI, EMA)، وليس توصية استثمارية."
+            f"⚠️ تنويه: هذا تحليل آلي وليس توصية مالية."
         )
 
         return {
