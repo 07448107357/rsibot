@@ -158,19 +158,27 @@ import requests
 
 def get_signal(name: str, timeframe: str = "15m") -> dict:
     try:
-        # تجهيز الرمز ليتوافق مع yfinance (مثل EURUSD=X أو GC=F للذهب)
-        symbol = name.replace("/", "").replace("-", "").upper()
-        if not symbol.endswith("=X") and not symbol.endswith("=F"):
-            symbol = f"{symbol}=X"
+        # 1. تنظيف الرمز من كلمة OTC والمسافات والرموز التعبيرية
+        clean_name = name.upper()
+        clean_name = clean_name.replace("OTC", "").replace("/", "").replace("-", "").strip()
+        
+        # حذف أي رموز أو مسافات زائدة
+        symbol = "".join(e for e in clean_name if e.isalnum())
 
-        # جلب بيانات الشموع
+        # 2. إضافة صياغة الفوركس المناسبة لـ Yahoo Finance
+        if not symbol.endswith("X"):
+            symbol = f"{symbol}=X"
+        else:
+            # في حال كان الرمز يتضمن X مثل AUDCHFX
+            symbol = f"{symbol[:-1]}=X" if not symbol.endswith("=X") else symbol
+
+        # جلب البيانات
         df = fetch_forex_klines(symbol, timeframe, limit=200)
 
-        # 1. التحقق من وجود البيانات وحجمها
         if df is None or df.empty or len(df) < 35:
             return {"error": f"بيانات غير كافية أو رمز غير صحيح لحساب المؤشرات ({symbol})."}
 
-        # 2. حساب المؤشرات واستخراج القيمة الأخيرة بشكل صحيح (.iloc[-1])
+        # حساب المؤشرات
         rsi_series = calculate_rsi(df, period=14)
         ema_fast_series = calculate_ema(df, period=9)
         ema_slow_series = calculate_ema(df, period=21)
@@ -180,10 +188,8 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
         ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
         last_price = round(float(df["close"].iloc[-1]), 4)
 
-        # توليد التوصية
         overall = build_recommendation(current_rsi, ema_fast, ema_slow)
 
-        # صياغة النص النهائي
         desc = (
             f"📈 الأصل: {symbol}\n"
             f"⏱️ الفريم: {timeframe}\n"
@@ -192,8 +198,7 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
             f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n\n"
             f"{overall}\n\n"
-            f"⚠️ تنويه: هذا تحليل آلي لمؤشرين فنيين (RSI, EMA)، "
-            f"وليس توصية استثمارية. التداول ينطوي على مخاطر عالية."
+            f"⚠️ تنويه: هذا تحليل آلي لمؤشرين فنيين (RSI, EMA)، وليس توصية استثمارية."
         )
 
         return {
@@ -206,7 +211,6 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
 
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
-        
         
             
 
