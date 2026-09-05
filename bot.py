@@ -463,7 +463,38 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             result_text, 
             reply_markup=InlineKeyboardMarkup(back_keyboard)
         )
+from telegram import Update
+from telegram.error import BadRequest
+from telegram.ext import ContextTypes
 
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()  # الرد الفوري على الضغطة لمنع دوران زر التحميل في تيليجرام
+
+    data = query.data
+    
+    # هنا يتم تحديد الأكشن بناءً على زر الضغط (مثلاً الفريمات الزمنية أو أسواق التداول)
+    if data == "refresh":
+        new_text = "🔄 جاري تحديث البيانات والتحليل بناءً على مؤشر RSI..."
+        new_reply_markup = query.message.reply_markup # أو القائمة الجديدة المناسبة
+    else:
+        new_text = f"📊 تم اختيار السوق أو الفريم: {data}\nجاري حساب مؤشر RSI..."
+        new_reply_markup = None
+
+    try:
+        # محاولة تعديل الرسالة الحالية
+        if new_reply_markup:
+            await query.edit_message_text(text=new_text, reply_markup=new_reply_markup)
+        else:
+            await query.edit_message_text(text=new_text)
+            
+    except BadRequest as e:
+        # تجاهل خطأ تطابق النص القديم مع الجديد تماماً لكي لا يتوقف البوت
+        if "Message is not modified" in str(e):
+            pass
+        else:
+            raise e
+            
 
 def main():
     TOKEN = os.environ.get("BOT_TOKEN")
