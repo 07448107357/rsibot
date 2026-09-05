@@ -492,10 +492,13 @@ async def get_and_send_rsi(query, symbol, market_name):
         current_rsi = round(float(rsi.iloc[-1]), 2)
         
         if current_rsi < 30:
-            signal = "منطقة تشبع بيعي - فرصة شراء (Buy) 🟢"
-        elif current_rsi > 70:
-            signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
-        result_text = (
+            signal = "السوق في حالة حياد ⚪"  # قيمة افتراضية أماناً لمنع الخطأ
+
+if current_rsi < 30:
+    signal = "منطقة تشبع بيعي - فرصة شراء (Buy) 🟢"
+elif current_rsi > 70:
+    signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
+    
             f"📊 **نتيجة التحليل الفني ({market_name})**\n"
             f"-----------------------------------\n"
             f"📈 قيمة مؤشر RSI: `{current_rsi}`\n"
