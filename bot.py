@@ -133,7 +133,27 @@ def analyze_market(name: str, timeframe: str = "15m") -> dict:
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
 
-    
+import yfinance as yf
+import pandas as pd
+
+# --- ضع هذا الكود فوق دالة get_signal مباشرة ---
+def fetch_forex_klines(symbol="EURUSD=X", interval="15m", limit=200):
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period="5d", interval=interval)
+        if df is None or df.empty:
+            return None
+        df = df.tail(limit).reset_index()
+        df['close'] = df['Close'].astype(float)
+        df['open'] = df['Open'].astype(float)
+        df['high'] = df['High'].astype(float)
+        df['low'] = df['Low'].astype(float)
+        return df
+    except Exception as e:
+        print(f"Error fetching forex data: {e}")
+        return None
+# -----------------------------------------------
+
 import requests
 
 def get_signal(name: str, timeframe: str = "15m") -> dict:
