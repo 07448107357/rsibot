@@ -228,7 +228,7 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
             f"— RSI (14): {current_rsi}\n"
             f"— EMA9: {ema_fast} | EMA21: {ema_slow} "
             f"({'EMA9 فوق EMA21' if ema_fast > ema_slow else 'EMA9 تحت EMA21'})\n"
-            f"— MACD: {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
+            f"— {macd_data['macd']} | خط الإشارة: {macd_data['signal']} "
             f"| الهيستوغرام: {macd_data['histogram']} ({cross_text})\n\n"
             f"{overall}\n\n"
             f"⚠️ تنويه: هذا تحليل آلي لثلاثة مؤشرات فنية شائعة (RSI, EMA, MACD)، "
