@@ -463,17 +463,60 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             result_text, 
             reply_markup=InlineKeyboardMarkup(back_keyboard)
         )
+
+import yfinance as yf
+import pandas as pd
 from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
+# 1. دالة جلب البيانات وحساب مؤشر RSI وعرض النتيجة
+async def get_and_send_rsi(query, symbol, market_name):
+    try:
+        data = yf.download(symbol, period="5d", interval="1h", progress=False)
+        
+        if data.empty or len(data) < 15:
+            await query.edit_message_text(text=f"⚠️ بيانات غير كافية لحساب مؤشر RSI لـ {market_name}.")
+            return
+
+        close_prices = data['Close'].values
+        if hasattr(close_prices, "squeeze"):
+            close_prices = close_prices.squeeze()
+
+        delta = pd.Series(close_prices).diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        current_rsi = round(float(rsi.iloc[-1]), 2)
+        
+        if current_rsi < 30:
+            signal = "منطقة تشبع بيعي - فرصة شراء (Buy) 🟢"
+        elif current_rsi > 70:
+            signal = "منطقة تشبع شرائي - فرصة بيع (Sell) 🔴"
+        else:
+            signal = "السوق في حالة حياد ⚪"
+
+        result_text = (
+            f"📊 **نتيجة التحليل الفني ({market_name})**\n"
+            f"-----------------------------------\n"
+            f"📈 قيمة مؤشر RSI: `{current_rsi}`\n"
+            f"💡 الإشارة: {signal}"
+        )
+        
+        await query.edit_message_text(text=result_text, parse_mode="Markdown")
+        
+    except Exception as e:
+        await query.edit_message_text(text=f"❌ حدث خطأ أثناء جلب البيانات: {str(e)}")
+
+# 2. دالة معالجة الأزرار
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()  # الرد الفوري على الضغطة لمنع دوران زر التحميل في تيليجرام
+    await query.answer()
 
     data = query.data
     
-    # إذا كان الزر خاص بالتحديث (refresh)
     if data == "refresh":
         new_text = "🔄 جاري تحديث البيانات والتحليل بناءً على مؤشر RSI..."
         new_reply_markup = query.message.reply_markup
@@ -485,12 +528,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
             else:
                 raise e
-                
-    # إذا كان الزر اختيار سوق (عملات، عملات رقمية، أسهم)
     else:
         clean_data = data.replace("cat_", "").replace("_", " ")
         
-        # تحديد رمز الأصل المالي بناءً على اختيار المستخدم
         if "Forex" in data or "العملات" in data:
             symbol = "EURUSD=X"
             market_name = "العملات (Forex)"
@@ -501,14 +541,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             symbol = "AAPL"
             market_name = "الأسهم (Stocks)"
 
-        # إظهار رسالة جاري التحميل مؤقتاً
         try:
             await query.edit_message_text(text=f"📊 تم اختيار: {clean_data}\nجاري جلب البيانات وحساب مؤشر RSI...")
         except BadRequest as e:
             if "Message is not modified" not in str(e):
                 raise e
         
-        # استدعاء دالة الجلب والحساب وعرض النتيجة النهائية
         await get_and_send_rsi(query, symbol, market_name)
         
             
