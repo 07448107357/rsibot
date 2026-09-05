@@ -503,7 +503,7 @@ async def get_and_send_rsi(query, symbol, market_name):
             f"-----------------------------------\n"
             f"📈 قيمة مؤشر RSI: `{current_rsi}`\n"
             f"💡 الإشارة: {signal}"
-        )
+        
         
         await query.edit_message_text(text=result_text, parse_mode="Markdown")
         
