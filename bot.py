@@ -253,7 +253,7 @@ def get_signal(name: str, timeframe: str = "15m") -> dict:
 
 
 
-def = fetch_forex_klines(symbol, timeframe, size=200)
+df = fetch_forex_klines(symbol, timeframe, size=200)
     if len(df) < MIN_CANDLES_REQUIRED:
     try:
             data_points = 50
