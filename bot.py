@@ -496,7 +496,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # استدعاء دالة الجلب والحساب
         await get_and_send_rsi(query, symbol, market_name)
         
-try:
+    try:
         # محاولة تعديل الرسالة الحالية
         if new_reply_markup:
             await query.edit_message_text(text=new_text, reply_markup=new_reply_markup)
