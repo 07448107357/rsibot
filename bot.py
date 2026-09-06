@@ -211,52 +211,6 @@ def analyze_market(df, pair_name, tf_name):
 
 
 
-import pandas as pd
-import yfinance as yf
-
-# ==========================================
-# 1. دالة جلب البيانات الأساسية
-# ==========================================
-def fetch_market_data(symbol: str, interval: str = "5m", limit: int = 200):
-    try:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period="5d", interval=interval, timeout=10)
-        if df is None or df.empty:
-            return None
-        df = df.tail(limit).reset_index()
-        df.columns = [str(col).lower() for col in df.columns]
-        if 'close' not in df.columns:
-            return None
-        df['close'] = df['close'].astype(float)
-        return df
-    except Exception as e:
-        print(f"خطأ في جلب البيانات لـ {symbol}: {e}")
-        return None
-
-# ==========================================
-# 2. دوال حساب المؤشرات المالية
-# ==========================================
-def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
-    return 100 - (100 / (1 + rs))
-
-def calculate_ema(df: pd.DataFrame, period: int) -> pd.Series:
-    return df['close'].ewm(span=period, adjust=False).mean()
-
-def build_recommendation(rsi: float, ema_fast: float, ema_slow: float) -> str:
-    if rsi <= 30 and ema_fast > ema_slow:
-        return "🟢 إشارة: شراء قوي (CALL / BUY)"
-    elif rsi >= 70 and ema_fast < ema_slow:
-        return "🔴 إشارة: بيع قوي (PUT / SELL)"
-    elif rsi <= 35:
-        return "🟢 إشارة: شراء (CALL / BUY)"
-    elif rsi >= 65:
-        return "🔴 إشارة: بيع (PUT / SELL)"
-    return "⚪ إشارة: محايد / انتظار"
-    
 
 
 def get_signal(name: str, timeframe: str = "5m") -> dict:
