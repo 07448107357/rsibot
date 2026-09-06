@@ -353,7 +353,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     if data.startswith("cat_"):
         market_key = data.replace("cat_", "")
-        symbols = list(ALL_MARKETS.get(market_key, {}).keys())
+        symbols = CATEGORIES.get(market_key, [])
         context.user_data["current_market"] = market_key
         keyboard = []
         for i in range(0, len(symbols), 2):
