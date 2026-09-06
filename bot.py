@@ -520,14 +520,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"—————————————\n"
             f"{result.get('desc', '')}"
             f"{disclaimer}"
+        
+        
+    await query.message.edit_text(
+        result_text,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"tf_{tf_name}_{symbol_name}")],
+            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+        ])
         )
-
-        await query.message.edit_text(
-            result_text,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"tf_{tf_name}_{symbol_name}")],
-                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-            
+        
+        
             
 
 def main():
