@@ -156,9 +156,9 @@ def analyze_market(df, pair_name, tf_name):
         score -= 1
 
     # (ج) منطقة RSI14
-    if current_rsi_14 > 55:
+    if current_rsi_14 > 45:
         score += 1
-    elif current_rsi_14 < 45:
+    elif current_rsi_14 < 55:
         score -= 1
 
     # (د) تقاطع RSI9 مع RSI14 (زخم قصير المدى)
