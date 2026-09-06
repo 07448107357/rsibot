@@ -355,25 +355,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if data.startswith("cat_"):
         market_key = data.replace("cat_", "")
-        symbols = CATEGORIES.get(market_key, [])  # التأكد من جلب القائمة الصحيحة
+        symbols = CATEGORIES.get(market_key, [])
         context.user_data["current_market"] = market_key
         
         keyboard = []
         row = []
         for symbol in symbols:
             row.append(InlineKeyboardButton(symbol, callback_data=f"sym_{symbol}"))
-            if len(row) == 2:  # وضع أصلين في كل صف
+            if len(row) == 2:
                 keyboard.append(row)
                 row = []
         if row:
-            keyboard.append(row)  
+            keyboard.append(row)
             
-        # إضافة زر الرجوع للقائمة الرئيسية
         keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        label = CATEGORY_LABELS.get(market_key, market_key)
         await query.message.edit_text(
-            f"📁 **{CATEGORY_LABELS.get(market_key, market_key)}**\nاختر الأصل:",
+            f"📁 **{label}**\nاختر الأصل:",
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
@@ -398,6 +398,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
                                        reply_markup=reply_markup, parse_mode="Markdown")
+        
                                        
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
