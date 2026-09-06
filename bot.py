@@ -355,7 +355,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     market_key = data.replace("cat_", "")
     symbols = CATEGORIES.get(market_key, [])  # التأكد من جلب القائمة الصحيحة
     context.user_data["current_market"] = market_key
-    
     keyboard = []
     row = []
     for symbol in symbols:
@@ -364,12 +363,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
             row = []
     if row:
-        keyboard.append(row)
-        
+        keyboard.append(row)  
     # إضافة زر الرجوع للقائمة الرئيسية
     keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
     await query.message.edit_text(
         f"📁 **{CATEGORY_LABELS.get(market_key, market_key)}**\nاختر الأصل:",
         reply_markup=reply_markup
