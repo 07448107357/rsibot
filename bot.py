@@ -448,62 +448,70 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
     data = query.data
 
+    # العودة للقائمة الرئيسية
+    if data == "main_menu":
+        await start(update, context)
+        return
+
+    # معالجة اختيار الأصول والعملات
     if data.startswith("cat_"):
         market_key = data.replace("cat_", "")
-        # استخدام CATEGORIES مباشرة لأنها مخزنة كقوائم
         symbols = CATEGORIES.get(market_key, [])
-        context.user_data["current_market"] = market_key
+        
+        if not symbols:
+            await query.message.edit_text("⚠️ لا توجد أصول متاحة في هذا القسم حالياً.")
+            return
 
         keyboard = []
         for i in range(0, len(symbols), 2):
-            row = [InlineKeyboardButton(symbols[i], callback_data=f"sym_{symbols[i]}")]
-            if i + 1 < len(symbols):
-                row.append(InlineKeyboardButton(symbols[i + 1], callback_data=f"sym_{symbols[i + 1]}"))
+            row = [InlineKeyboardButton(sym, callback_data=f"sym_{sym}") for sym in symbols[i:i+2]]
             keyboard.append(row)
-        keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
+        
+        keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        label = CATEGORY_LABELS.get(market_key, market_key)
-        await query.message.edit_text(f"📁 {label}\nاختر الأصل:", reply_markup=reply_markup)
+        await query.message.edit_text("📌 اختر الأصل المطلوب لتحليله:", reply_markup=reply_markup)
+        return
 
-    elif data == "main_menu":
-        await start(update, context)
-
-    elif data.startswith("sym_"):
+    # اختيار الأصل وحفظه ثم الانتقال لاختيار الفريم الزمني
+    if data.startswith("sym_"):
         symbol_name = data.replace("sym_", "")
-        context.user_data["selected_symbol"] = symbol_name
+        context.user_data["current_market"] = symbol_name
 
         keyboard = []
-        row = []
-        for tf in TIMEFRAMES:
-            row.append(InlineKeyboardButton(tf, callback_data=f"tf_{tf}"))
-            if len(row) == 4:
-                keyboard.append(row)
-                row = []
-        if row:
+        for i in range(0, len(TIMEFRAMES), 2):
+            row = [InlineKeyboardButton(tf, callback_data=f"tf_{tf}_{symbol_name}") for tf in TIMEFRAMES[i:i+2]]
             keyboard.append(row)
-        market_key = context.user_data.get("current_market", "forex")
-        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة", callback_data=f"cat_{market_key}")])
+        
+        keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
-                                       reply_markup=reply_markup, parse_mode="Markdown")
+        await query.message.edit_text(f"⏱️ اختر الفريم الزمني لتحليل ({symbol_name}):", reply_markup=reply_markup)
+        return
 
-    elif data.startswith("tf_"):
-        tf_name = data.replace("tf_", "")
-        symbol_name = context.user_data.get("selected_symbol", "#")
-
-        back_keyboard = [
-            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"sym_{symbol_name}")],
-            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")],
-        ]
+    # معالجة التحليل وعرض النتائج بالفريم الزمني المحدد
+    if data.startswith("tf_"):
+        parts = data.split("_", 2)
+        if len(parts) < 3:
+            return
+        tf_name = parts[1]
+        symbol_name = parts[2]
 
         await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
         
         # استدعاء دالة التحليل
         result = get_signal(symbol_name, tf_name)
 
-        # التحقق من وجود خطأ وإيقاف التنفيذ بلطف دون حدوث UnboundLocalError
+        # التأكد من أن النتيجة تم إرجاعها وليست فارغة
+        if not result or not isinstance(result, dict):
+            await query.message.edit_text(
+                "⚠️ حدث خطأ غير متوقع أثناء استجابة التحليل.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]])
+            )
+            return
+
+        # التحقق من وجود خطأ وإيقاف التنفيذ بلطف
         if "error" in result:
             await query.message.edit_text(
                 f"⚠️ {result['error']}",
@@ -515,21 +523,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "\n\nℹ️ ملاحظة: هذا تحليل آلي وليس نصيحة استثمارية أو ضماناً للربح."
         )
 
-    result_text = (
-        f"📊 نتيجة التحليل\n"
-        f"—————————————\n"
-        f"{result.get('desc', '')}"
-        f"{disclaimer}"
-    )  # <-- تأكد من وجود هذا القوس هنا لإغلاق فتحة السطر 518
+        result_text = (
+            f"📊 نتيجة التحليل\n"
+            f"—————————————\n"
+            f"{result.get('desc', '')}"
+            f"{disclaimer}"
+        )
 
-    await query.message.edit_text(
-        result_text,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"tf_{tf_name}_{symbol_name}")],
-            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-        ])
-    )
-    
+        await query.message.edit_text(
+            result_text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"tf_{tf_name}_{symbol_name}")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+            ])
+        )
         
         
             
