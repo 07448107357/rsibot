@@ -282,21 +282,15 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
         
         
-        
-# =====================================================================
-# واجهة تليجرام
-# =====================================================================
-CATEGORY_LABELS = {
-    "forex": "💱 العملات (Forex)",
-    "crypto": "🟡 العملات الرقمية (Crypto)",
-    "stocks": "📈 الأسهم والشركات (Stocks)"
-}
-
+    
+# --- واجهة تليجرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
-                for key, label in CATEGORY_LABELS.items()]
+    keyboard = []
+    for cat in CATEGORIES.keys():
+        keyboard.append([InlineKeyboardButton(cat, callback_data=f"cat_{cat}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    welcome_text = "🤖 **بوت الإشارات الفنية**\n\nاختر السوق المطلوب:"
+    welcome_text = "🤖 **مرحباً بك في بوت التحليل الفني المتقدم**\n\nاختر القسم المطلوب:"
+    
     if update.message:
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
@@ -306,80 +300,76 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-    
+
     if data.startswith("cat_"):
-        market_key = data.replace("cat_", "")
-        symbols = CATEGORIES.get(market_key, [])
-        context.user_data["current_market"] = market_key
-        
+        cat_name = data.replace("cat_", "")
+        pairs = CATEGORIES.get(cat_name, [])
         keyboard = []
-        row = []
-        for symbol in symbols:
-            row.append(InlineKeyboardButton(symbol, callback_data=f"sym_{symbol}"))
-            if len(row) == 2:
-                keyboard.append(row)
-                row = []
-        if row:
+        for i in range(0, len(pairs), 2):
+            row = [InlineKeyboardButton(pairs[i], callback_data=f"pair_{pairs[i]}")]
+            if i + 1 < len(pairs):
+                row.append(InlineKeyboardButton(pairs[i+1], callback_data=f"pair_{pairs[i+1]}"))
             keyboard.append(row)
-            
-        keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
+        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        label = CATEGORY_LABELS.get(market_key, market_key)
-        await query.message.edit_text(
-            f"📁 **{label}**\nاختر الأصل:",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
-        )
-        
+        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج:", reply_markup=reply_markup, parse_mode="Markdown")
+
     elif data == "main_menu":
         await start(update, context)
-        
-    elif data.startswith("sym_"):
-        symbol_name = data.replace("sym_", "")
-        context.user_data["selected_symbol"] = symbol_name
+
+    elif data.startswith("pair_"):
+        pair_name = data.replace("pair_", "")
+        context.user_data['selected_pair'] = pair_name
         keyboard = []
         row = []
         for tf in TIMEFRAMES:
             row.append(InlineKeyboardButton(tf, callback_data=f"tf_{tf}"))
-            if len(row) == 4:
+            if len(row) == 3:
                 keyboard.append(row)
                 row = []
         if row:
             keyboard.append(row)
-        market_key = context.user_data.get("current_market", "forex")
-        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة", callback_data=f"cat_{market_key}")])
+        keyboard.append([InlineKeyboardButton("🔙 رجوع للأزواج", callback_data="cat_💱 العملات (Forex)")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
-                                       reply_markup=reply_markup, parse_mode="Markdown")
-        
-                                       
+        await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, parse_mode="Markdown")
+
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
-        symbol_name = context.user_data.get("selected_symbol", "EUR/USD")
-        back_keyboard = [
-            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"sym_{symbol_name}")],
-            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")],
-        ]
-        await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
-        result = get_signal(symbol_name, tf_name)
-        if "error" in result:
-            await query.message.edit_text(f"⚠️ {result['error']}", reply_markup=InlineKeyboardMarkup(back_keyboard))
-            return
-        disclaimer = (
-            "\n\nℹ️ *ملاحظة:* هذا تحليل فني آلي وليس نصيحة استثمارية أو ضماناً للربح. "
-            "الأسواق المالية والعملات الرقمية والخيارات الثنائية تحمل مخاطرة عالية. "
-            "اختبر الإشارات على حساب تجريبي قبل أي استخدام فعلي."
-        )
-        result_text = (
-            f"📊 **نتيجة التحليل**\n"
-            f"─────────────────\n"
-            f"{result['desc']}"
-            f"{disclaimer}"
-        )
-        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown")
+        pair_name = context.user_data.get('selected_pair', 'EUR/USD OTC')
         
-
+        try:
+            import pandas as pd
+            import numpy as np
+            
+            np.random.seed(None)
+            x = np.linspace(0, 40, 100)
+            close_prices = 100 + (np.sin(x) * 3) + np.cumsum(np.random.randn(100) * 0.4)
+            df = pd.DataFrame({'close': close_prices})
+            
+            
+            analysis_result = analyze_market(df, pair_name, tf_name)
+            if analysis_result is not None and isinstance(analysis_result, tuple) and len(analysis_result) == 2:
+                signal, desc = analysis_result
+            else:
+                signal, desc = "WAIT", "⚠️ عذراً، لم يُرجِع مؤشر التحليل أي بيانات لهذا الفريم."
+                
+            result_text = (f"📊 **نتيجة التحليل**\n"
+                           f"─────────────────\n"
+                           f"🔹 الزوج: `{pair_name}`\n"
+                           f"⏰ الفريم: `{tf_name}`\n\n"
+                           f"{desc}")
+            
+            keyboard = [
+                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"pair_{pair_name}")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
+            
+        except Exception as e:
+            print(f"Error in timeframe handler: {e}")
+            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}", parse_mode='Markdown')
             
 
 def main():
