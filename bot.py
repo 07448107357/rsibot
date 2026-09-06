@@ -333,124 +333,76 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
-
-# =====================================================================
-# مطابقة المفاتيح تماماً لما هو موجود في صورة الكود لديك
-# =====================================================================
-
-CATEGORY_LABELS = {
-    "💱 العملات (Forex)": "💱 العملات (Forex)",
-    "🟡 العملات الرقمية (Crypto)": "🟡 العملات الرقمية (Crypto)",
-    "📈 الأسهم والشركات (Stocks)": "📈 الأسهم والشركات (Stocks)"
-}
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # إنشاء الأزرار بحيث يكون الـ callback_data مطابقاً تماماً لنص المفتاح في CATEGORIES
     keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
                 for key, label in CATEGORY_LABELS.items()]
     reply_markup = InlineKeyboardMarkup(keyboard)
     welcome_text = "🤖 **بوت الإشارات الفنية**\n\nاختر السوق المطلوب:"
-
     if update.message:
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
         await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
-        
-
-
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     data = query.data
-
-    # العودة للقائمة الرئيسية
-    if data == "main_menu":
-        await start(update, context)
-        return
-
-    # معالجة اختيار الأصول والعملات
     if data.startswith("cat_"):
         market_key = data.replace("cat_", "")
-        symbols = CATEGORIES.get(market_key, [])
-        
-        if not symbols:
-            await query.message.edit_text("⚠️ لا توجد أصول متاحة في هذا القسم حالياً.")
-            return
-
+        symbols = list(ALL_MARKETS.get(market_key, {}).keys())
+        context.user_data["current_market"] = market_key
         keyboard = []
         for i in range(0, len(symbols), 2):
-            row = [InlineKeyboardButton(sym, callback_data=f"sym_{sym}") for sym in symbols[i:i+2]]
+            row = [InlineKeyboardButton(symbols[i], callback_data=f"sym_{symbols[i]}")]
+            if i + 1 < len(symbols):
+                row.append(InlineKeyboardButton(symbols[i + 1], callback_data=f"sym_{symbols[i + 1]}"))
             keyboard.append(row)
-        
-        keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")])
+        keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text("📌 اختر الأصل المطلوب لتحليله:", reply_markup=reply_markup)
-        return
-
-    # اختيار الأصل وحفظه ثم الانتقال لاختيار الفريم الزمني
-    if data.startswith("sym_"):
+        label = CATEGORY_LABELS.get(market_key, market_key)
+        await query.message.edit_text(f"📁 {label}\nاختر الأصل:", reply_markup=reply_markup)
+    elif data == "main_menu":
+        await start(update, context)
+    elif data.startswith("sym_"):
         symbol_name = data.replace("sym_", "")
-        context.user_data["current_market"] = symbol_name
-
+        context.user_data["selected_symbol"] = symbol_name
         keyboard = []
-        for i in range(0, len(TIMEFRAMES), 2):
-            row = [InlineKeyboardButton(tf, callback_data=f"tf_{tf}_{symbol_name}") for tf in TIMEFRAMES[i:i+2]]
+        row = []
+        for tf in TIMEFRAMES:
+            row.append(InlineKeyboardButton(tf, callback_data=f"tf_{tf}"))
+            if len(row) == 4:
+                keyboard.append(row)
+                row = []
+        if row:
             keyboard.append(row)
-        
-        keyboard.append([InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")])
+        market_key = context.user_data.get("current_market", "forex")
+        keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة", callback_data=f"cat_{market_key}")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"⏱️ اختر الفريم الزمني لتحليل ({symbol_name}):", reply_markup=reply_markup)
-        return
-
-    # معالجة التحليل وعرض النتائج بالفريم الزمني المحدد
-    if data.startswith("tf_"):
-        parts = data.split("_", 2)
-        if len(parts) < 3:
-            return
-        tf_name = parts[1]
-        symbol_name = parts[2]
-
+        await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
+                                       reply_markup=reply_markup, parse_mode="Markdown")
+    elif data.startswith("tf_"):
+        tf_name = data.replace("tf_", "")
+        symbol_name = context.user_data.get("selected_symbol", "EUR/USD")
+        back_keyboard = [
+            [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"sym_{symbol_name}")],
+            [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")],
+        ]
         await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
-        
-        # استدعاء دالة التحليل
         result = get_signal(symbol_name, tf_name)
-
-        # التأكد من أن النتيجة تم إرجاعها وليست فارغة
-        if not result or not isinstance(result, dict):
-            await query.message.edit_text(
-                "⚠️ حدث خطأ غير متوقع أثناء استجابة التحليل.",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]])
-            )
-            return
-
-        # التحقق من وجود خطأ وإيقاف التنفيذ بلطف
         if "error" in result:
-            await query.message.edit_text(
-                f"⚠️ {result['error']}",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]])
-            )
+            await query.message.edit_text(f"⚠️ {result['error']}", reply_markup=InlineKeyboardMarkup(back_keyboard))
             return
-
         disclaimer = (
-            "\n\nℹ️ ملاحظة: هذا تحليل آلي وليس نصيحة استثمارية أو ضماناً للربح."
+            "\n\nℹ️ *ملاحظة:* هذا تحليل فني آلي وليس نصيحة استثمارية أو ضماناً للربح. "
+            "الأسواق المالية والعملات الرقمية والخيارات الثنائية تحمل مخاطرة عالية. "
+            "اختبر الإشارات على حساب تجريبي قبل أي استخدام فعلي."
         )
-
         result_text = (
-            f"📊 نتيجة التحليل\n"
-            f"—————————————\n"
-            f"{result.get('desc', '')}"
+            f"📊 **نتيجة التحليل**\n"
+            f"─────────────────\n"
+            f"{result['desc']}"
             f"{disclaimer}"
         )
-
-        await query.message.edit_text(
-            result_text,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"tf_{tf_name}_{symbol_name}")],
-                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
-            ])
-        )
-        
+        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown") 
         
             
 
