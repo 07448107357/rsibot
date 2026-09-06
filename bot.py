@@ -352,19 +352,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     if data.startswith("cat_"):
-        market_key = data.replace("cat_", "")
-        symbols = CATEGORIES.get(market_key, [])
-        context.user_data["current_market"] = market_key
-        keyboard = []
-        for i in range(0, len(symbols), 2):
-            row = [InlineKeyboardButton(symbols[i], callback_data=f"sym_{symbols[i]}")]
-            if i + 1 < len(symbols):
-                row.append(InlineKeyboardButton(symbols[i + 1], callback_data=f"sym_{symbols[i + 1]}"))
+    market_key = data.replace("cat_", "")
+    symbols = CATEGORIES.get(market_key, [])  # التأكد من جلب القائمة الصحيحة
+    context.user_data["current_market"] = market_key
+    
+    keyboard = []
+    row = []
+    for symbol in symbols:
+        row.append(InlineKeyboardButton(symbol, callback_data=f"sym_{symbol}"))
+        if len(row) == 2:  # وضع أصلين في كل صف
             keyboard.append(row)
-        keyboard.append([InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        label = CATEGORY_LABELS.get(market_key, market_key)
-        await query.message.edit_text(f"📁 {label}\nاختر الأصل:", reply_markup=reply_markup)
+            row = []
+    if row:
+        keyboard.append(row)
+        
+    # إضافة زر الرجوع للقائمة الرئيسية
+    keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.message.edit_text(
+        f"📁 **{CATEGORY_LABELS.get(market_key, market_key)}**\nاختر الأصل:",
+        reply_markup=reply_markup
+    )
+    
     elif data == "main_menu":
         await start(update, context)
     elif data.startswith("sym_"):
