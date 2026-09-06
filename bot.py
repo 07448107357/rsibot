@@ -261,34 +261,44 @@ def build_recommendation(rsi: float, ema_fast: float, ema_slow: float) -> str:
 
 def get_signal(name: str, timeframe: str = "5m") -> dict:
     try:
-        raw_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
-        clean_symbol = "".join(e for e in raw_name if e.isalnum())
+        # قاموس ترجمة الأصول المعقدة إلى رموز صحيحة في yfinance
+        symbol_mapping = {
+            # الأسهم (Stocks)
+            "TESLA": "TSLA", "APPLE": "AAPL", "MICROSOFT": "MSFT", "AMAZON": "AMZN",
+            "META": "META", "NETFLIX": "NFLX", "INTEL": "INTC", "CISCO": "CSCO",
+            "AMD": "AMD", "ALIBABA": "BABA", "VISA": "V", "MCDONALD": "MCD",
+            "FEDEX": "FDX", "PFIZER": "PFE", "COINBASE": "COIN", "BOEING": "BA",
+            "EXXONMOBIL": "XOM", "CITIGROUP": "C", "PALANTIR": "PLTR", "VIX": "^VIX",
+            
+            # العملات الرقمية (Crypto)
+            "BITCOIN": "BTC-USD", "ETHEREUM": "ETH-USD", "BINANCE": "BNB-USD",
+            "LITECOIN": "LTC-USD", "SOLANA": "SOL-USD", "DOGECOIN": "DOGE-USD",
+            "CARDANO": "ADA-USD", "RIPPLE": "XRP-USD", "POLYGON": "POL-USD",
+            "POLKADOT": "DOT-USD", "CHAINLINK": "LINK-USD", "TRON": "TRX-USD",
+            "AVALANCHE": "AVAX-USD", "TONCOIN": "TON-USD", "DASH": "DASH-USD"
+        }
 
-        # التوجيه الدقيق لكل نوع أصل لتجنب أخطاء yfinance
-        if clean_symbol in ["GOLD", "XAU", "XAUUSD"]:
+        # تنظيف النص القادم من الزر وإزالة الأعلام والرموز التعبيرية وكلمة OTC
+        raw_name = name.upper().replace("OTC", "").replace("/", "").replace("-", "").strip()
+        clean_symbol = "".join(e for e in raw_name if e.isalnum() or e.isspace()).strip()
+        
+        # استخراج الكلمة الأساسية للبحث عنها في القاموس
+        key_words = clean_symbol.split()
+        target_key = key_words[-1] if key_words else clean_symbol
+
+        if target_key in symbol_mapping:
+            symbol = symbol_mapping[target_key]
+        elif "GOLD" in clean_symbol or "XAU" in clean_symbol:
             symbol = "GC=F"
-        elif clean_symbol in ["AAPL", "APPLE"]:
-            symbol = "AAPL"
-        elif clean_symbol in ["TSLA", "TESLA"]:
-            symbol = "TSLA"
-        elif clean_symbol in ["BTC", "BITCOIN"]:
-            symbol = "BTC-USD"
-        elif clean_symbol in ["BNB"]:
-            symbol = "BNB-USD"
         else:
-            # للأزواج وعملات الفوركس فقط نضيف =X
-            if clean_symbol.endswith("X") and not clean_symbol.endswith("=X"):
-                symbol = f"{clean_symbol[:-1]}=X"
-            elif not clean_symbol.endswith("=X"):
-                symbol = f"{clean_symbol}=X"
+            # للأزواج وعملات الفوركس (تتم معالجة الرموز مثل EURUSD لتصبح EURUSD=X)
+            forex_clean = "".join(e for e in clean_symbol if e.isalnum())
+            if len(forex_clean) == 6:
+                symbol = f"{forex_clean}=X"
             else:
-                symbol = clean_symbol
+                symbol = f"{forex_clean}=X"
 
         df = fetch_market_data(symbol, timeframe, limit=200)
-
-        if (df is None or df.empty) and not symbol.endswith("=X"):
-            symbol = clean_symbol
-            df = fetch_market_data(symbol, timeframe, limit=200)
 
         if df is None or df.empty or len(df) < 35:
             return {"error": f"بيانات غير كافية أو رمز غير صحيح ({name})."}
@@ -299,13 +309,13 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
 
         current_rsi = round(float(rsi_series.iloc[-1]), 2)
         ema_fast = round(float(ema_fast_series.iloc[-1]), 4)
-        ema_slow = round(float(ema_slow_series.iloc[-1]), 4)
+        ema_slow = round(float(ema_slow_series.iloc[-1], 4), 4) if 'ema_slow_series' in locals() else 0
         last_price = round(float(df["close"].iloc[-1]), 4)
 
         overall = build_recommendation(current_rsi, ema_fast, ema_slow)
 
         desc = (
-            f"📈 الأصل: {symbol}\n"
+            f"📈 الأصل: {name}\n"
             f"⏱️ الفريم: {timeframe}\n"
             f"💰 آخر سعر إغلاق: {last_price}\n\n"
             f"— RSI (14): {current_rsi}\n"
@@ -316,6 +326,7 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
         return {"desc": desc}
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}
+        
         
         
 
