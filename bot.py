@@ -499,29 +499,34 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
 
         await query.message.edit_text("⏳ جاري جلب بيانات السوق الحقيقية وتحليلها...")
+        
+        # استدعاء دالة التحليل
         result = get_signal(symbol_name, tf_name)
 
+        # التحقق من وجود خطأ وإيقاف التنفيذ بلطف دون حدوث UnboundLocalError
         if "error" in result:
-            await query.message.edit_text(f"⚠️ {result['error']}", reply_markup=InlineKeyboardMarkup(back_keyboard))
+            await query.message.edit_text(
+                f"⚠️ {result['error']}",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]])
+            )
             return
 
         disclaimer = (
-            "\n\nℹ️ ملاحظة: هذا تحليل فني آلي وليس نصيحة استثمارية أو ضماناً للربح. "
-            "الأسواق المالية والعملات الرقمية والخيارات الثنائية تحمل مخاطرة عالية. "
-            "اختبر الإشارات على حساب تجريبي قبل أي استخدام فعلي."
+            "\n\nℹ️ ملاحظة: هذا تحليل آلي وليس نصيحة استثمارية أو ضماناً للربح."
         )
+
         result_text = (
             f"📊 نتيجة التحليل\n"
-            f"─────────────────\n"
+            f"—————————————\n"
             f"{result.get('desc', '')}"
             f"{disclaimer}"
         )
 
-    await query.message.edit_text(
-        result_text,
-        reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")]])
-    )
-    
+        await query.message.edit_text(
+            result_text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 تحليل مجدداً", callback_data=f"tf_{tf_name}_{symbol_name}")],
+                [InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu")]
             
             
 
