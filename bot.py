@@ -329,7 +329,6 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
         
         
         
-
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
@@ -338,6 +337,7 @@ CATEGORY_LABELS = {
     "crypto": "🟡 العملات الرقمية (Crypto)",
     "stocks": "📈 الأسهم والشركات (Stocks)"
 }
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
                 for key, label in CATEGORY_LABELS.items()]
@@ -347,32 +347,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
         await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    
     if data.startswith("cat_"):
         market_key = data.replace("cat_", "")
-    symbols = CATEGORIES.get(market_key, [])  # التأكد من جلب القائمة الصحيحة
-    context.user_data["current_market"] = market_key
-    keyboard = []
-    row = []
-    for symbol in symbols:
-        row.append(InlineKeyboardButton(symbol, callback_data=f"sym_{symbol}"))
-        if len(row) == 2:  # وضع أصلين في كل صف
-            keyboard.append(row)
-            row = []
-    if row:
-        keyboard.append(row)  
-    # إضافة زر الرجوع للقائمة الرئيسية
-    keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.message.edit_text(
-        f"📁 **{CATEGORY_LABELS.get(market_key, market_key)}**\nاختر الأصل:",
-        reply_markup=reply_markup
-    )
+        symbols = CATEGORIES.get(market_key, [])  # التأكد من جلب القائمة الصحيحة
+        context.user_data["current_market"] = market_key
+        
+        keyboard = []
+        row = []
+        for symbol in symbols:
+            row.append(InlineKeyboardButton(symbol, callback_data=f"sym_{symbol}"))
+            if len(row) == 2:  # وضع أصلين في كل صف
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)  
+            
+        # إضافة زر الرجوع للقائمة الرئيسية
+        keyboard.append([InlineKeyboardButton("🔙 القائمة الرئيسية", callback_data="main_menu")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.message.edit_text(
+            f"📁 **{CATEGORY_LABELS.get(market_key, market_key)}**\nاختر الأصل:",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        
     elif data == "main_menu":
         await start(update, context)
+        
     elif data.startswith("sym_"):
         symbol_name = data.replace("sym_", "")
         context.user_data["selected_symbol"] = symbol_name
@@ -390,6 +398,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.message.edit_text(f"⏱️ اختر الفريم الزمني لـ *{symbol_name}*:",
                                        reply_markup=reply_markup, parse_mode="Markdown")
+                                       
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
         symbol_name = context.user_data.get("selected_symbol", "EUR/USD")
@@ -413,8 +422,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{result['desc']}"
             f"{disclaimer}"
         )
-        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown") 
+        await query.message.edit_text(result_text, reply_markup=InlineKeyboardMarkup(back_keyboard), parse_mode="Markdown")
         
+
             
 
 def main():
