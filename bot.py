@@ -371,7 +371,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📁 **{CATEGORY_LABELS.get(market_key, market_key)}**\nاختر الأصل:",
         reply_markup=reply_markup
     )
-    
     elif data == "main_menu":
         await start(update, context)
     elif data.startswith("sym_"):
