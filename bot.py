@@ -333,6 +333,11 @@ def get_signal(name: str, timeframe: str = "5m") -> dict:
 # =====================================================================
 # واجهة تليجرام
 # =====================================================================
+CATEGORY_LABELS = {
+    "forex": "💱 العملات (Forex)",
+    "crypto": "🟡 العملات الرقمية (Crypto)",
+    "stocks": "📈 الأسهم والشركات (Stocks)"
+}
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(label, callback_data=f"cat_{key}")]
                 for key, label in CATEGORY_LABELS.items()]
