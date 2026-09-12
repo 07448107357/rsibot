@@ -237,12 +237,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for cat in CATEGORIES.keys():
         keyboard.append([InlineKeyboardButton(cat, callback_data=f"cat_{cat}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    welcome_text = "🤖 مرحباً بك في بوت التحليل الفني المتقدم\n\nاختر القسم المطلوب:"
+    welcome_text = "🤖 **مرحباً بك في بوت التحليل الفني المتقدم**\n\nاختر القسم المطلوب:"
     
     if update.message:
-        await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     elif update.callback_query:
-        await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup)
+        await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -260,8 +260,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        # تم إزالة تنسيق الـ Markdown الحساس هنا لتجنب الأخطاء
-        await query.message.edit_text(f"📁 قسم: {cat_name}\nاختر الزوج:", reply_markup=reply_markup)
+        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج:", reply_markup=reply_markup, parse_mode="Markdown")
 
     elif data == "main_menu":
         await start(update, context)
@@ -280,7 +279,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للأزواج", callback_data="cat_💱 العملات (Forex)")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: {pair_name}", reply_markup=reply_markup)
+        await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, parse_mode="Markdown")
 
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
@@ -295,17 +294,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             close_prices = 100 + (np.sin(x) * 3) + np.cumsum(np.random.randn(100) * 0.4)
             df = pd.DataFrame({'close': close_prices})
             
+            
             analysis_result = analyze_market(df, pair_name, tf_name)
             if analysis_result is not None and isinstance(analysis_result, tuple) and len(analysis_result) == 2:
                 signal, desc = analysis_result
             else:
                 signal, desc = "WAIT", "⚠️ عذراً، لم يُرجِع مؤشر التحليل أي بيانات لهذا الفريم."
                 
-            # تم إزالة parse_mode بالكامل من رسالة النتيجة لضمان عدم حدوث خطأ الـ Markdown نهائياً
-            result_text = (f"📊 نتيجة التحليل\n"
+            result_text = (f"📊 **نتيجة التحليل**\n"
                            f"─────────────────\n"
-                           f"🔹 الزوج: {pair_name}\n"
-                           f"⏰ الفريم: {tf_name}\n\n"
+                           f"🔹 الزوج: `{pair_name}`\n"
+                           f"⏰ الفريم: `{tf_name}`\n\n"
                            f"{desc}")
             
             keyboard = [
@@ -314,11 +313,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            await query.message.edit_text(result_text, reply_markup=reply_markup)
+            await query.message.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
             
         except Exception as e:
             print(f"Error in timeframe handler: {e}")
-            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}")
+            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}", parse_mode='Markdown')
             
             
 
