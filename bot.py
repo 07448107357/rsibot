@@ -237,7 +237,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for cat in CATEGORIES.keys():
         keyboard.append([InlineKeyboardButton(cat, callback_data=f"cat_{cat}")])
     reply_markup = InlineKeyboardMarkup(keyboard)
-    welcome_text = "🤖 **مرحباً بك في بوت التحليل الفني المتقدم**\n\nاختر القسم المطلوب:"
+    welcome_text = "🤖 مرحباً بك في بوت التحليل الفني المتقدم\n\nاختر القسم المطلوب:"
+    
     
     if update.message:
         await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
@@ -260,7 +261,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج:", reply_markup=reply_markup, parse_mode="Markdown")
+        await query.message.edit_text(f"📁 قسم: **{cat_name}**\nاختر الزوج:", reply_markup=reply_markup, parse_mode="Markdown")
 
     elif data == "main_menu":
         await start(update, context)
