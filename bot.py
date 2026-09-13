@@ -240,9 +240,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = "🤖 **مرحباً بك في بوت التحليل الفني المتقدم**\n\nاختر القسم المطلوب:"
     
     if update.message:
-        await update.message.reply_text(welcome_text, reply_markup=reply_markup, ")
+        await update.message.reply_text(welcome_text, reply_markup=reply_markup,)
     elif update.callback_query:
-        await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup, ")
+        await update.callback_query.message.edit_text(welcome_text, reply_markup=reply_markup,)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -280,7 +280,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للأزواج", callback_data="cat_💱 العملات (Forex)")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup, ")
+        await query.message.edit_text(f"⏱️ اختر الفريم الزمني للزوج: *{pair_name}*", reply_markup=reply_markup,)
 
     elif data.startswith("tf_"):
         tf_name = data.replace("tf_", "")
@@ -314,11 +314,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            await query.message.edit_text(result_text, reply_markup=reply_markup, ')
+            await query.message.edit_text(result_text, reply_markup=reply_markup,)
             
         except Exception as e:
             print(f"Error in timeframe handler: {e}")
-            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}", ')
+            await query.message.edit_text(f"⚠️ حدث خطأ أثناء معالجة التحليل: {e}",)
             
             
 
