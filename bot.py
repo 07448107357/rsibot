@@ -260,7 +260,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
         keyboard.append([InlineKeyboardButton("🔙 رجوع للقائمة الرئيسية", callback_data="main_menu")])
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(f"📁 قسم: *{cat_name}*\nاختر الزوج:", reply_markup=reply_markup, parse_mode="Markdown")
+        await query.message.edit_text(f"📁 قسم: {cat_name}\nاختر الزوج:", reply_markup=reply_markup)
+        
 
     elif data == "main_menu":
         await start(update, context)
