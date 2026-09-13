@@ -236,12 +236,18 @@ def get_signal(name, timeframe="15m"):
 # --- واجهة تليجرام ---
 def compute_atr(df, period=14):
     import pandas as pd
-    high_low = df['high'] - df['low']
-    high_close = (df['high'] - df['close'].shift()).abs()
-    low_close = (df['low'] - df['close'].shift()).abs()
+    # التأكد من مطابقة أسماء الأعمدة سواء كانت بحرف كبير أو صغير
+    h_col = 'High' if 'High' in df.columns else 'high'
+    l_col = 'Low' if 'Low' in df.columns else 'low'
+    c_col = 'Close' if 'Close' in df.columns else 'close'
+    
+    high_low = df[h_col] - df[l_col]
+    high_close = (df[h_col] - df[c_col].shift()).abs()
+    low_close = (df[l_col] - df[c_col].shift()).abs()
     ranges = pd.concat([high_low, high_close, low_close], axis=1)
     true_range = ranges.max(axis=1)
     return true_range.rolling(period).mean()
+    
     
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
