@@ -231,7 +231,18 @@ def get_signal(name, timeframe="15m"):
     except Exception as e:
         return {"error": f"حدث خطأ أثناء التحليل: {str(e)}"}       
     
+
+
 # --- واجهة تليجرام ---
+def compute_atr(df, period=14):
+    import pandas as pd
+    high_low = df['high'] - df['low']
+    high_close = (df['high'] - df['close'].shift()).abs()
+    low_close = (df['low'] - df['close'].shift()).abs()
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = ranges.max(axis=1)
+    return true_range.rolling(period).mean()
+    
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     for cat in CATEGORIES.keys():
